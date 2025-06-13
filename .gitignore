@@ -1,0 +1,24 @@
+# Gitignore for the overall project
+
+# Node modules for both frontend and backend
+node_modules/
+
+# Environment variables (contains sensitive data)
+.env
+
+# Firebase service account key (HIGHLY SENSITIVE)
+invoice-backend/service-account-key.json
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Vite specific build output
+invoice-manager/dist/
+invoice-manager/.vite/
