@@ -10,6 +10,7 @@ const props = defineProps({
       Quantity: 1,
       UnitPrice: 0,
       LineTotal: 0,
+      // Removed Category from default item here
     }),
   },
   index: {
@@ -34,27 +35,25 @@ const computedLineTotal = computed(() => {
 });
 
 watch(computedLineTotal, (newVal) => {
-    if (localItem.value.LineTotal !== newVal) { // Only update if different to avoid infinite loop
+    if (localItem.value.LineTotal !== newVal) {
         localItem.value = {
             ...localItem.value,
             LineTotal: newVal
         };
     }
-}, { immediate: true }); // immediate: true ensures calculation on initial load
+}, { immediate: true });
 </script>
 
 <template>
   <v-row align="center">
-    <v-col cols="12" sm="5">
-      <v-text-field
+    <v-col cols="12" sm="6"> <v-text-field
         v-model="localItem.Description"
         label="Description"
         density="compact"
         hide-details
       ></v-text-field>
     </v-col>
-    <v-col cols="4" sm="2">
-      <v-text-field
+    <v-col cols="4" sm="2"> <v-text-field
         v-model.number="localItem.Quantity"
         label="Qty"
         type="number"
@@ -63,8 +62,7 @@ watch(computedLineTotal, (newVal) => {
         hide-details
       ></v-text-field>
     </v-col>
-    <v-col cols="4" sm="2">
-      <v-text-field
+    <v-col cols="4" sm="2"> <v-text-field
         v-model.number="localItem.UnitPrice"
         label="Unit Price (IDR)"
         type="number"
@@ -73,8 +71,7 @@ watch(computedLineTotal, (newVal) => {
         hide-details
       ></v-text-field>
     </v-col>
-    <v-col cols="4" sm="2">
-      <v-text-field
+    <v-col cols="12" sm="1"> <v-text-field
         :model-value="computedLineTotal"
         label="Line Total (IDR)"
         readonly

@@ -5,6 +5,7 @@ import ArtistManagement from '../views/ArtistManagement.vue'
 import InvoiceCreate from '../views/InvoiceCreate.vue'
 import InvoiceList from '../views/InvoiceList.vue'
 import InvoiceDetails from '../views/InvoiceDetails.vue'
+import ProductServiceManagement from '../views/ProductServiceManagement.vue' // Renamed from ItemCatalogManagement
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,6 +24,11 @@ const router = createRouter({
       path: '/artists',
       name: 'artists',
       component: ArtistManagement
+    },
+    {
+      path: '/products-services', // Renamed route path
+      name: 'products-services', // Renamed route name
+      component: ProductServiceManagement
     },
     {
       path: '/invoices/create',

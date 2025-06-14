@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useClientStore } from '@/stores/client';
 import { useArtistStore } from '@/stores/artist';
 import { useInvoiceStore } from '@/stores/invoice';
-import InvoiceItemRow from '@/components/InvoiceItemRow.vue';
+import { useProductServiceStore } from '@/stores/productService';
 import { formatRupiah } from '@/utils/formatCurrency';
 
 const route = useRoute();
@@ -12,6 +12,7 @@ const router = useRouter();
 const clientStore = useClientStore();
 const artistStore = useArtistStore();
 const invoiceStore = useInvoiceStore();
+const productServiceStore = useProductServiceStore();
 
 const invoiceFormData = ref({
   ID: '',
@@ -42,12 +43,12 @@ const formTitle = computed(() =>
 onMounted(async () => {
   await clientStore.fetchClients();
   await artistStore.fetchArtists();
+  await productServiceStore.fetchProductsServices();
 
   if (route.params.id) {
     try {
       const invoiceToEdit = await invoiceStore.fetchInvoiceById(route.params.id);
       if (invoiceToEdit) {
-        // Ensure numbers are parsed from potentially string values from backend/Google Sheets
         invoiceFormData.value = {
           ...invoiceToEdit,
           Subtotal: parseFloat(invoiceToEdit.Subtotal || 0),
@@ -55,6 +56,10 @@ onMounted(async () => {
           TotalDue: parseFloat(invoiceToEdit.TotalDue || 0),
           items: invoiceToEdit.items
             ? invoiceToEdit.items.map(item => ({
+                // Ensure existing items also have an 'id' for consistent keying,
+                // though usually fetched items would have a proper backend ID.
+                // Using the backend ID is highly recommended if available.
+                id: item.ID || Date.now() + Math.random(), // Fallback if no backend ID
                 ...item,
                 Quantity: parseFloat(item.Quantity || 0),
                 UnitPrice: parseFloat(item.UnitPrice || 0),
@@ -75,6 +80,10 @@ const showItemsSection = computed(() =>
 
 const addItem = () => {
   invoiceFormData.value.items.push({
+    // IMPORTANT: Use a truly unique key for each item, especially when adding/removing from a list.
+    // Date.now() + Math.random() is a simple client-side way to generate a unique ID.
+    // If your backend assigns IDs, use those once the item is saved.
+    id: Date.now() + Math.random(),
     Description: '',
     Quantity: 1,
     UnitPrice: 0,
@@ -97,7 +106,7 @@ const calculatedSubtotal = computed(() => {
 watch(
   calculatedSubtotal,
   (newVal) => {
-    if (showItemsSection.value) { // Only auto-update Subtotal if it's item-based
+    if (showItemsSection.value) {
       invoiceFormData.value.Subtotal = newVal;
     }
   },
@@ -131,6 +140,24 @@ async function saveInvoice() {
     alert('Failed to save invoice. Check console for details.');
   }
 }
+
+// Autocomplete logic for items from master list
+const updateItemFromMaster = (selectedName, itemIndex) => {
+  // Find the full product object based on the selected name
+  const selectedProduct = productServiceStore.productsServices.find(
+    (product) => product.Name === selectedName
+  );
+
+  if (selectedProduct) {
+    invoiceFormData.value.items[itemIndex].Description = selectedProduct.Name;
+    invoiceFormData.value.items[itemIndex].UnitPrice = selectedProduct.UnitPrice;
+  } else {
+    // If user types something not in the master list, keep the typed value
+    invoiceFormData.value.items[itemIndex].Description = selectedName;
+    // Optionally, reset UnitPrice if the description doesn't match a master product
+    // invoiceFormData.value.items[itemIndex].UnitPrice = 0;
+  }
+};
 </script>
 
 <template>
@@ -206,13 +233,68 @@ async function saveInvoice() {
           <template v-if="showItemsSection">
             <h3 class="mt-4 mb-2">Invoice Items</h3>
             <v-divider class="mb-4"></v-divider>
-            <div v-for="(item, index) in invoiceFormData.items" :key="index" class="mb-4">
-              <InvoiceItemRow
-                :item="item"
-                :index="index"
-                @update:item="invoiceFormData.items[index] = $event"
-                @remove="removeItem"
-              />
+            <div v-for="(item, index) in invoiceFormData.items" :key="item.id" class="mb-4">
+              <v-row align="center">
+                <v-col cols="12" sm="6">
+                  <v-autocomplete
+                    v-model="item.Description"
+                    :items="productServiceStore.productsServices"
+                    item-title="Name"
+                    item-value="Name"
+                    label="Description"
+                    density="compact"
+                    hide-details
+                    @update:model-value="selectedName => updateItemFromMaster(selectedName, index)"
+                    :loading="productServiceStore.loading"
+                    :disabled="productServiceStore.loading"
+                    clearable
+                  ></v-autocomplete>
+                </v-col>
+                <v-col cols="4" sm="2">
+                  <v-text-field
+                    v-model.number="item.Quantity"
+                    label="Qty"
+                    type="number"
+                    min="1"
+                    density="compact"
+                    hide-details
+                    @update:model-value="() => {
+                        const qty = parseFloat(item.Quantity) || 0;
+                        const price = parseFloat(item.UnitPrice) || 0;
+                        item.LineTotal = qty * price;
+                    }"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="4" sm="2">
+                  <v-text-field
+                    v-model.number="item.UnitPrice"
+                    label="Unit Price (IDR)"
+                    type="number"
+                    min="0"
+                    density="compact"
+                    hide-details
+                    @update:model-value="() => {
+                        const qty = parseFloat(item.Quantity) || 0;
+                        const price = parseFloat(item.UnitPrice) || 0;
+                        item.LineTotal = qty * price;
+                    }"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" sm="1">
+                  <v-text-field
+                    :model-value="item.LineTotal"
+                    label="Line Total (IDR)"
+                    readonly
+                    density="compact"
+                    hide-details
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" sm="1" class="d-flex justify-end">
+                  <v-btn icon color="error" size="small" @click="removeItem(index)">
+                    <v-icon>mdi-close-circle</v-icon>
+                  </v-btn>
+                </v-col>
+              </v-row>
               <v-divider v-if="index < invoiceFormData.items.length - 1" class="my-2"></v-divider>
             </div>
             <v-btn color="secondary" @click="addItem" class="mb-4">

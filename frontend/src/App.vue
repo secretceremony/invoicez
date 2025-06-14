@@ -25,6 +25,8 @@ const drawer = ref(false);
           :to="{ name: 'artists' }"
         ></v-list-item>
         <v-list-item
+          prepend-icon="mdi-tag" title="Products & Services" :to="{ name: 'products-services' }" ></v-list-item>
+        <v-list-item
           prepend-icon="mdi-file-document-plus"
           title="Create Invoice"
           :to="{ name: 'create-invoice' }"
