@@ -5761,6 +5761,7 @@
   "dependencies": {
     "@mdi/font": "^7.4.47",
     "axios": "^1.9.0",
+    "jspdf": "^3.0.1",
     "pinia": "^3.0.3",
     "vue-router": "^4.5.1",
     "vuetify": "^3.8.9"
