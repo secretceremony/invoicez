@@ -5759,6 +5759,7 @@
     }
   },
   "dependencies": {
+    "@mdi/font": "^7.4.47",
     "axios": "^1.9.0",
     "pinia": "^3.0.3",
     "vuetify": "^3.8.9"
