@@ -11,10 +11,6 @@ export default defineConfig({
     vueDevTools(),
   ],
   base: process.env.NODE_ENV === 'production' ? '/invoicez/' : '/',
-  plugins: [
-    vue(),
-    vueDevTools(),
-  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
