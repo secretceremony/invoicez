@@ -33,15 +33,30 @@ const headers = ref([
 ]);
 
 async function addOrUpdateProduct() {
+  // --- VALIDATION START ---
+  // Check if any of the required fields are empty or invalid.
+  const name = productFormData.value.Name?.trim();
+  const description = productFormData.value.Description?.trim();
+  const category = productFormData.value.Category;
+  const unitPrice = parseFloat(productFormData.value.UnitPrice);
+
+  if (!name || !description || !category || !unitPrice || unitPrice <= 0) {
+    alert("Please fill in all fields. Unit Price must be greater than 0.");
+    return; // Stop the function here, preventing the dialog from closing.
+  }
+  // --- VALIDATION END ---
+
   try {
     // Ensure UnitPrice is a number when sending to store/backend
-    productFormData.value.UnitPrice = parseFloat(productFormData.value.UnitPrice || 0);
+    productFormData.value.UnitPrice = unitPrice;
 
     if (isEditing.value) {
       await productServiceStore.updateProductService(productFormData.value.ID, productFormData.value);
     } else {
       await productServiceStore.addProductService(productFormData.value);
     }
+
+    // If successful, close the dialog and reset the form
     productDialog.value = false;
     resetForm();
   } catch (error) {
