@@ -54,6 +54,11 @@ The repository is divided into two main directories:
 
 ## Setup Instructions
 
+### Notes!
+Before starting the setup, you must install these first
+* **`Git`**: https://git-scm.com/downloads
+* **`Node.JS`**: https://nodejs.org/en (when install, don't check the additional stuff such as chocolatey!)
+
 To get the Invoicez application up and running on your local machine, follow these steps:
 
 ### 1. Clone the Repository
