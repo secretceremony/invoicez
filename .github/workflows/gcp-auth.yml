@@ -26,10 +26,11 @@ jobs:
         id: auth
         uses: 'google-github-actions/auth@v2'
         with:
-          # This is the full resource name of your Workload Identity Pool Provider
-          workload_identity_provider: 'projects/1030455078468/locations/global/workloadIdentityPools/github-invoicez-deploy/providers/github'
-          # This is the email of the service account to impersonate
-          service_account: 'folks-938@thermal-origin-462809-t2.iam.gserviceaccount.com'
+          # UPDATE THIS LINE with your new Pool and Provider ID
+          workload_identity_provider: 'projects/1030455078468/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider'
+          
+          # UPDATE THIS LINE with your new Service Account email
+          service_account: 'github-folks-invoicez@thermal-origin-462809-t2.iam.gserviceaccount.com'
 
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
