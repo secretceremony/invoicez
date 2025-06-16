@@ -11,7 +11,8 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    # These permissions are required for the OIDC token exchange
+    # These permissions are required for the OIDC token exchange (even if not directly using WIF, it's good practice
+    # to have 'id-token: write' if you might use OIDC-based actions in the future).
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -20,21 +21,22 @@ jobs:
       - name: 'Checkout repository'
         uses: actions/checkout@v4
       
-      - name: 'Authenticate to Google Cloud (Using Workload Identity Federation)'
+      - name: 'Authenticate to Google Cloud (Using SA Key Secret)'
         id: auth
         uses: 'google-github-actions/auth@v2'
         with:
-          # --- Workload Identity Federation (Recommended for Production) ---
-          # This method uses OIDC to exchange a GitHub token for a Google Cloud access token.
-          # Replace 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID'
-          # with your actual Workload Identity Provider resource name.
-          workload_identity_provider: 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID'
-          # Replace 'your-service-account@your-project-id.iam.gserviceaccount.com'
-          # with the email of the Google Cloud Service Account you want to impersonate.
-          service_account: 'your-service-account@your-project-id.iam.gserviceaccount.com'
+          # --- Service Account Key (Using GitHub Secret - this should work for you) ---
+          # IMPORTANT: Ensure you have a GitHub repository secret named GCP_SA_KEY
+          # that contains the full JSON content of your Google Cloud Service Account key.
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-          # --- Service Account Key (Alternative, less secure than WIF) ---
-          # credentials_json: '${{ secrets.GCP_SA_KEY }}' # This securely references your GitHub Secret (commented out when using WIF)
+          # --- Workload Identity Federation (WIF) - Keep commented out for now ---
+          # If you wish to use WIF in the future, you'll need to configure
+          # an Identity Pool and Provider in Google Cloud and replace the
+          # placeholders below with your specific values. This method is
+          # generally more secure for production but requires more setup.
+          # workload_identity_provider: 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID'
+          # service_account: 'your-service-account@your-project-id.iam.gserviceaccount.com'
 
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
