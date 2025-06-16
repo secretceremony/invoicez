@@ -144,6 +144,29 @@ The frontend application will typically run on `http://localhost:5173`.
 
 Open your web browser and go to `http://localhost:5173` to access the Invoice Manager.
 
+### (Optional) Access both applications at the same time
+
+you can use `.bat` file for local developing. you only need these files with this code onto your folder and you can make a shortcut to the main `.bat` file
+
+main.bat
+```bash
+@echo off
+start frontend.bat
+start backend.bat
+```
+
+frontend.bat
+```bash
+cd C:\Users\(your PC username)\invoicez\frontend
+npm run dev
+```
+
+backend.bat
+```bash
+cd C:\Users\(your PC username)\invoicez\frontend
+node server.js
+```
+
 ## Important Notes & Troubleshooting
 
 * **CORS Issues:** If you encounter CORS (Cross-Origin Resource Sharing) errors, ensure your backend's `cors` middleware is correctly configured to allow requests from your frontend's origin (`http://localhost:5173`).
