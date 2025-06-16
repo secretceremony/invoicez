@@ -177,4 +177,4 @@ node server.js
 
 ## Reporting Issues or Suggestions:
 
-If you encounter any errors, bugs, or have suggestions for improvements, please feel free to contact `secretceremony` or submit a fork suggestion.
+If you encounter any errors, bugs, or have suggestions for improvements, please feel free to contact `secretceremony` and `ShiroTenma` or submit a fork suggestion.
