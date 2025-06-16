@@ -21,15 +21,7 @@ jobs:
     steps:
       - name: 'Checkout repository'
         uses: actions/checkout@v4
-
-      - name: 'Debug: Print OIDC Token Claims'
-        run: |
-          echo "Requesting OIDC Token for audience: sts.googleapis.com"
-          TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.googleapis.com" | jq -r '.value')
-          echo "--- OIDC Token Payload ---"
-          echo $TOKEN | cut -d. -f2 | base64 --decode | jq .
-          echo "--------------------------"
-
+        
       - name: 'Authenticate to Google Cloud'
         id: auth
         uses: 'google-github-actions/auth@v2'
