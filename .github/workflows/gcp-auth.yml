@@ -1,5 +1,3 @@
-# .github/workflows/gcp-auth.yml
-
 name: 'Authenticate to Google Cloud'
 
 # Run this workflow when changes are pushed to the main branch
@@ -21,16 +19,22 @@ jobs:
     steps:
       - name: 'Checkout repository'
         uses: actions/checkout@v4
-        
-      - name: 'Authenticate to Google Cloud'
+      
+      - name: 'Authenticate to Google Cloud (Using Workload Identity Federation)'
         id: auth
         uses: 'google-github-actions/auth@v2'
         with:
-          # UPDATE THIS LINE with your new Pool and Provider ID
-          workload_identity_provider: 'projects/1030455078468/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider'
-          
-          # UPDATE THIS LINE with your new Service Account email
-          service_account: 'github-folks-invoicez@thermal-origin-462809-t2.iam.gserviceaccount.com'
+          # --- Workload Identity Federation (Recommended for Production) ---
+          # This method uses OIDC to exchange a GitHub token for a Google Cloud access token.
+          # Replace 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID'
+          # with your actual Workload Identity Provider resource name.
+          workload_identity_provider: 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID'
+          # Replace 'your-service-account@your-project-id.iam.gserviceaccount.com'
+          # with the email of the Google Cloud Service Account you want to impersonate.
+          service_account: 'your-service-account@your-project-id.iam.gserviceaccount.com'
+
+          # --- Service Account Key (Alternative, less secure than WIF) ---
+          # credentials_json: '${{ secrets.GCP_SA_KEY }}' # This securely references your GitHub Secret (commented out when using WIF)
 
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
