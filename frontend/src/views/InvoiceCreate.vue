@@ -35,7 +35,7 @@ let newItemIdCounter = 0; // For unique client-side item keys
 
 // --- Static Data ---
 const invoiceTypes = [
-  { text: 'Artist Check/Invoice', value: 'Artist Check' },
+  { text: 'Staff Check/Invoice', value: 'Staff Check' },
   { text: 'Art Commission Invoice', value: 'Art Commission' },
   { text: 'Custom Merch Invoice', value: 'Custom Merch' },
   { text: 'Internal Expense (Staff)', value: 'Internal Expense' }
@@ -226,7 +226,7 @@ async function saveInvoice() {
               ></v-select>
             </v-col>
           </v-row>
-          <v-row v-if="['Artist Check', 'Art Commission', 'Internal Expense'].includes(invoiceFormData.InvoiceType)">
+          <v-row v-if="['Staff Check', 'Art Commission', 'Internal Expense'].includes(invoiceFormData.InvoiceType)">
             <v-col cols="12">
               <v-select
                 v-model="invoiceFormData.StaffID"
@@ -240,7 +240,7 @@ async function saveInvoice() {
             </v-col>
           </v-row>
 
-          <v-row v-if="invoiceFormData.InvoiceType === 'Artist Check'">
+          <v-row v-if="invoiceFormData.InvoiceType === 'Staff Check'">
             <v-col cols="12">
               <v-text-field
                 v-model.number="invoiceFormData.Subtotal"
@@ -349,7 +349,7 @@ async function saveInvoice() {
                 label="Down Payment (IDR)"
                 type="number"
                 min="0"
-                :disabled="invoiceFormData.InvoiceType === 'Artist Check' || invoiceFormData.InvoiceType === 'Internal Expense'"
+                :disabled="invoiceFormData.InvoiceType === 'Staff Check' || invoiceFormData.InvoiceType === 'Internal Expense'"
                 prepend-inner-icon="mdi-cash"
               ></v-text-field>
             </v-col>

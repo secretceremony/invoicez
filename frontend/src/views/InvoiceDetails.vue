@@ -148,12 +148,12 @@ const dynamicForLabel = computed(() => {
 
 const billToLabel = computed(() => {
   if (!invoice.value) return 'BILL TO';
-  return ['Artist Check', 'Internal Expense'].includes(invoice.value.InvoiceType) ? 'PAY TO' : 'BILL TO';
+  return ['Staff Check', 'Internal Expense'].includes(invoice.value.InvoiceType) ? 'PAY TO' : 'BILL TO';
 });
 
 const billToName = computed(() => {
   if (!invoice.value) return 'N/A';
-  if (['Artist Check', 'Internal Expense'].includes(invoice.value.InvoiceType) && staff.value) {
+  if (['Staff Check', 'Internal Expense'].includes(invoice.value.InvoiceType) && staff.value) {
     return staff.value.Name;
   } else if (client.value) {
     return client.value.Name;
@@ -163,7 +163,7 @@ const billToName = computed(() => {
 
 const billToContact = computed(() => {
   if (!invoice.value) return 'N/A';
-  if (['Artist Check', 'Internal Expense'].includes(invoice.value.InvoiceType) && staff.value) {
+  if (['Staff Check', 'Internal Expense'].includes(invoice.value.InvoiceType) && staff.value) {
     return staff.value.Contact || staff.value.NIM || staff.value.Role || 'No contact info';
   } else if (client.value) {
     return client.value.Contact;
