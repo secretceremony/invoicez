@@ -271,6 +271,7 @@ const billToContact = computed(() => {
         <div class="notes-section">
           <p class="notes-label">Notes:</p>
           <p class="notes-content" v-html="dynamicNotesContent"></p>
+          <p v-if="invoice.Notes" class="notes-content" style="margin-top: 10px;">{{ invoice.Notes }}</p>
         </div>
 
         <div class="contact-footer">
