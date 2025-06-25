@@ -301,10 +301,6 @@ app.get('/api/invoices/:id', async (req, res) => {
         const invoices = await readSheet('Invoices');
         let invoice = invoices.find(inv => inv.ID === invoiceId);
         if (!invoice) return res.status(404).json({ message: 'Invoice not found.' });
-
-        // Translate the "ArtistID" column to "StaffID" for the frontend
-        invoice.StaffID = invoice.StaffID;
-        delete invoice.StaffID;
         
         const invoiceItems = await readSheet('InvoiceItems');
         invoice.items = invoiceItems.filter(item => item.InvoiceID === invoiceId);
@@ -319,8 +315,6 @@ app.post('/api/invoices', async (req, res) => {
         const invoiceHeaders = ['ID', 'InvoiceType', 'Date', 'ClientID', 'StaffID', 'Subtotal', 'DownPaymentAmount', 'TotalDue', 'Status', 'Notes'];
         
         const invoiceForSheet = { ...req.body, ID: newInvoiceId, Date: invoiceDate };
-        // Translate StaffID from frontend to ArtistID column in the sheet
-        invoiceForSheet.StaffID = invoiceForSheet.StaffID;
         
         await appendSheetRow('Invoices', invoiceHeaders.map(h => String(invoiceForSheet[h] ?? '')));
 
@@ -346,9 +340,7 @@ app.put('/api/invoices/:id', async (req, res) => {
         const invoiceIndex = invoices.findIndex(inv => inv.ID === invoiceId);
         if (invoiceIndex === -1) return res.status(404).json({ message: 'Invoice not found.' });
         
-        // Translate StaffID to ArtistID for sheet
-        const updatedData = { ...req.body, ID: invoiceId, StaffID: req.body.StaffID };
-        invoices[invoiceIndex] = updatedData;
+        invoices[invoiceIndex] = { ...invoices[invoiceIndex], ...req.body, ID: invoiceId };
 
         await writeSheet('Invoices', [invoiceHeaders, ...invoices.map(inv => invoiceHeaders.map(h => String(inv[h] ?? '')))]);
 
