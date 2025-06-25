@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import ClientManagement from '../views/ClientManagement.vue'
-import ArtistManagement from '../views/ArtistManagement.vue'
+import StaffManagement from '../views/StaffManagement.vue'
 import InvoiceCreate from '../views/InvoiceCreate.vue'
 import InvoiceList from '../views/InvoiceList.vue'
 import InvoiceDetails from '../views/InvoiceDetails.vue'
@@ -20,10 +20,10 @@ const router = createRouter({
       name: 'clients',
       component: ClientManagement
     },
-    {
-      path: '/artists',
-      name: 'artists',
-      component: ArtistManagement
+    { // MODIFIED ROUTE
+      path: '/staff',
+      name: 'staff',
+      component: StaffManagement
     },
     {
       path: '/products-services', // Renamed route path

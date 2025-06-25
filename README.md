@@ -83,7 +83,12 @@ The backend uses a Google Service Account to access your Google Sheet.
 
 2.  **Share your Google Sheet with the Service Account:**
     * Create a new Google Sheet that will store your invoice data. You'll need separate tabs (sheets) named `Clients`, `Artists`, `ProductsAndServices`, `Invoices`, and `InvoiceItems`.
-    * The first row of each sheet should contain the headers as expected by the backend (`ID`, `Name`, `Contact` for Clients; `ID`, `Name`, `NIM`, `Role`, `Contact` for Artists; `ID`, `Name`, `Description`, `UnitPrice`, `Category` for ProductsAndServices; `ID`, `InvoiceType`, `Date`, `ClientID`, `ArtistID`, `Subtotal`, `DownPaymentAmount`, `TotalDue`, `Status`, `Notes` for Invoices; `ID`, `InvoiceID`, `Description`, `Quantity`, `UnitPrice`, `LineTotal` for InvoiceItems).
+    * The first row of each sheet should contain the headers as expected by the backend:
+        * **Clients**: `ID`, `Name`, `Contact`
+        * **Artists**: `ID`, `Name`, `NIM`, `Role`, `Contact`
+        * **ProductsAndServices**: `ID`, `Name`, `Description`, `UnitPrice`, `Category`
+        * **Invoices**: `ID`, `InvoiceType`, `Date`, `ClientID`, `ArtistID`, `Subtotal`, `DownPaymentAmount`, `TotalDue`, `Status`, `Notes`
+        * **InvoiceItems**: `ID`, `InvoiceID`, `Description`, `Quantity`, `UnitPrice`, `LineTotal`, `PurchaseLocation` 
     * **Share this Google Sheet** with the email address of your newly created service account (e.g., `your-service-account-email@your-project-id.iam.gserviceaccount.com`). Grant it "Editor" access.
 
 3.  **Configure Environment Variables:**
@@ -163,7 +168,7 @@ npm run dev
 
 backend.bat
 ```bash
-cd C:\Users\(your PC username)\invoicez\frontend
+cd C:\Users\(your PC username)\invoicez\backend
 node server.js
 ```
 

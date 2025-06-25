@@ -42,7 +42,8 @@ export const useClientStore = defineStore('client', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.put(`<span class="math-inline">\{API\_URL\}/</span>{id}`, clientData);
+        // CORRECTED: Used proper template literal syntax
+        const response = await axios.put(`${API_URL}/${id}`, clientData);
         const index = this.clients.findIndex(c => c.ID === id);
         if (index !== -1) {
           this.clients[index] = response.data;
@@ -60,7 +61,8 @@ export const useClientStore = defineStore('client', {
       this.loading = true;
       this.error = null;
       try {
-        await axios.delete(`<span class="math-inline">\{API\_URL\}/</span>{id}`);
+        // CORRECTED: Used proper template literal syntax
+        await axios.delete(`${API_URL}/${id}`);
         this.clients = this.clients.filter(c => c.ID !== id);
       } catch (err) {
         this.error = err.message || 'Failed to delete client.';

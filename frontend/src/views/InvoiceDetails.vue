@@ -3,313 +3,173 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useInvoiceStore } from '@/stores/invoice';
 import { useClientStore } from '@/stores/client';
-import { useArtistStore } from '@/stores/artist';
+import { useStaffStore } from '@/stores/staff';
 import { formatRupiah } from '@/utils/formatCurrency';
-
-// PDF generation libraries
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-
-// Import logos (assuming they are in src/assets)
-// You need to place your actual logo files here, e.g., src/assets/kmitk_logo.png
-// Make sure these paths are correct for your project!
 import kmitkLogo from '@/assets/kmitk_logo.png';
 import folksLogo from '@/assets/folks_logo.png';
-
-// --- CONSOLE LOG FOR DEBUGGING (can remove in production) ---
-console.log('InvoiceDetails.vue script setup started.');
-// --- END CONSOLE LOG ---
 
 const route = useRoute();
 const router = useRouter();
 const invoiceStore = useInvoiceStore();
 const clientStore = useClientStore();
-const artistStore = useArtistStore();
+const staffStore = useStaffStore();
 
 const invoice = ref(null);
-const client = ref(null); // Will store the full client object
-const artist = ref(null); // Will store the full artist object
+const client = ref(null);
+const staff = ref(null);
 const loading = ref(true);
 const error = ref(null);
 
 const invoiceId = computed(() => route.params.id);
 
-// Function to navigate to the edit invoice page
 const editInvoice = (id) => {
   router.push({ name: 'edit-invoice', params: { id } });
 };
 
-// --- onMounted: Fetches data when component loads ---
 onMounted(async () => {
-  // --- CONSOLE LOG FOR DEBUGGING ---
-  console.log('InvoiceDetails.vue onMounted hook fired.');
-  console.log('Current invoiceId from route:', invoiceId.value);
-  // --- END CONSOLE LOG ---
-
   if (!invoiceId.value) {
-    console.log('No invoice ID found in route params. Redirecting to invoice list.');
     router.push({ name: 'invoice-list' });
     return;
   }
-
   loading.value = true;
   error.value = null;
-
   try {
-    // Ensure clients and artists are loaded for lookup
-    // Only fetch if stores are empty to avoid unnecessary API calls
-    if (clientStore.clients.length === 0) {
-      await clientStore.fetchClients();
-    }
-    if (artistStore.artists.length === 0) {
-      await artistStore.fetchArtists();
-    }
-
-    // --- CONSOLE LOG FOR DEBUGGING ---
-    console.log('Attempting to fetch invoice with ID:', invoiceId.value);
-    // --- END CONSOLE LOG ---
+    if (clientStore.clients.length === 0) await clientStore.fetchClients();
+    if (staffStore.staff.length === 0) await staffStore.fetchStaff();
 
     const fetchedInvoice = await invoiceStore.fetchInvoiceById(invoiceId.value);
-    
-    // --- DEBUGGING: Check what we actually received ---
-    console.log('Raw response from fetchInvoiceById:', fetchedInvoice);
-    console.log('Type of fetchedInvoice:', typeof fetchedInvoice);
-    console.log('Is fetchedInvoice a string?', typeof fetchedInvoice === 'string');
-    
-    // Validate fetched data: If it's a string (likely HTML error) or null/undefined
-    if (typeof fetchedInvoice === 'string' || !fetchedInvoice) {
-      const errorMessage = 'API returned invalid data (HTML or empty) instead of JSON. Check your API endpoint and ensure your backend server is running.';
-      console.error(errorMessage, fetchedInvoice ? fetchedInvoice.substring(0, 200) + '...' : '');
-      throw new Error(errorMessage);
-    }
-    
-    // If data is a valid object, process it
-    if (typeof fetchedInvoice === 'object') {
-      // Safely parse numeric fields from potential strings into numbers
-      const processedInvoice = {
+
+    if (typeof fetchedInvoice === 'object' && fetchedInvoice) {
+      invoice.value = {
         ...fetchedInvoice,
         Subtotal: parseFloat(fetchedInvoice.Subtotal || 0),
         DownPaymentAmount: parseFloat(fetchedInvoice.DownPaymentAmount || 0),
         TotalDue: parseFloat(fetchedInvoice.TotalDue || 0),
-      };
-
-      // Process invoice items similarly (Category is NOT expected here anymore)
-      if (fetchedInvoice.items && Array.isArray(fetchedInvoice.items)) {
-        processedInvoice.items = fetchedInvoice.items.map(item => ({
+        items: fetchedInvoice.items ? fetchedInvoice.items.map(item => ({
           ...item,
           Quantity: parseFloat(item.Quantity || 0),
           UnitPrice: parseFloat(item.UnitPrice || 0),
           LineTotal: parseFloat(item.LineTotal || 0),
-          // Category is removed from invoice item properties
-        }));
-      } else {
-        processedInvoice.items = []; // Ensure items is an array even if not present
-      }
-      
-      invoice.value = processedInvoice;
-
-      // Lookup client and artist full objects by their IDs
+        })) : [],
+      };
       client.value = clientStore.clients.find(c => c.ID === invoice.value.ClientID) || null;
-      artist.value = artistStore.artists.find(a => a.ID === invoice.value.ArtistID) || null;
-
-      // --- CONSOLE LOGS FOR DEBUGGING ---
-      console.log('--- Invoice Details Component State ---');
-      console.log('Raw fetchedInvoice (before parseFloat):', fetchedInvoice); // What was received from the store
-      console.log('Processed invoice.value (after parseFloat):', invoice.value); // What's now in component state
-      console.log('Type of invoice.value.Subtotal:', typeof invoice.value.Subtotal, 'Value:', invoice.value.Subtotal);
-      console.log('Type of invoice.value.TotalDue:', typeof invoice.value.TotalDue, 'Value:', invoice.value.TotalDue);
-      
-      // ******* NEW DEBUGGING LOGS FOR ITEMS AND DESCRIPTION *******
-      console.log('Invoice items array:', invoice.value.items);
-      if (invoice.value.items && invoice.value.items.length > 0) {
-        invoice.value.items.forEach((item, idx) => {
-          console.log(`Item ${idx + 1}:`);
-          console.log(`  Description: '${item.Description}' (Type: ${typeof item.Description})`);
-          console.log(`  Quantity: ${item.Quantity} (Type: ${typeof item.Quantity})`);
-          console.log(`  UnitPrice: ${item.UnitPrice} (Type: ${typeof item.UnitPrice})`);
-          console.log(`  LineTotal: ${item.LineTotal} (Type: ${typeof item.LineTotal})`);
-        });
-      }
-      // ******* END NEW DEBUGGING LOGS *******
-
-      console.log('--- End Invoice Details Component State ---');
-      // --- END CONSOLE LOGS ---
-
+      staff.value = staffStore.staff.find(a => a.ID === invoice.value.StaffID) || null;
     } else {
-      // If fetchedInvoice is not an object (e.g., empty array or non-truthy)
-      error.value = 'Invoice not found.';
-      console.log('Invoice not found for ID:', invoiceId.value);
+      throw new Error('Invoice not found or invalid data received.');
     }
   } catch (err) {
-    // Catch any errors during fetching or processing
     error.value = err.message || 'Failed to load invoice details.';
     console.error('Error in InvoiceDetails onMounted:', err);
-    
-    // Provide specific troubleshooting tips for API issues
-    if (err.message && err.message.includes('HTML instead of JSON')) {
-      console.error('This usually means:');
-      console.error('1. Your API server is not running');
-      console.error('2. The API endpoint URL is incorrect');
-      console.error('3. There\'s a CORS issue');
-      console.error('4. Your API is returning an error page instead of JSON');
-    }
   } finally {
-    loading.value = false; // Always set loading to false in finally block
+    loading.value = false;
   }
 });
 
-// --- PDF Generation Logic ---
 const generatePdf = async () => {
-  // Ensure invoice data is loaded before attempting PDF generation
-  if (!invoice.value) {
-    // Replaced alert with console log and return, as alerts are discouraged in Canvas
-    console.error('Invoice data not loaded yet. Cannot generate PDF.');
-    return;
-  }
+  if (!invoice.value) return;
 
-  // Target the specific HTML element to be converted to PDF
   const invoiceContent = document.getElementById('invoice-content-printable');
-
-  // Temporarily apply styles for consistent PDF appearance
   const originalBackground = invoiceContent.style.background;
   const originalPadding = invoiceContent.style.padding;
   invoiceContent.style.background = 'white';
-  invoiceContent.style.padding = '20mm'; // Use millimeters for precise PDF padding
-
+  invoiceContent.style.padding = '20mm';
 
   const canvas = await html2canvas(invoiceContent, {
-    scale: 2, // Increase scale for better resolution in the PDF
-    useCORS: true, // Important if your logos are from external sources
-    logging: true, // Enable logging for debugging html2canvas issues
-    backgroundColor: '#FFFFFF' // Ensure a white background
+    scale: 2,
+    useCORS: true,
+    logging: true,
+    backgroundColor: '#FFFFFF'
   });
 
-  // Reset original styles after canvas capture
   invoiceContent.style.background = originalBackground;
   invoiceContent.style.padding = originalPadding;
 
-
   const imgData = canvas.toDataURL('image/png');
-  // Initialize jsPDF with portrait orientation, millimeters unit, and A4 size
   const pdf = new jsPDF('p', 'mm', 'a4');
-  const imgWidth = 210; // A4 width in mm
-  const pageHeight = 297; // A4 height in mm
-  const imgHeight = (canvas.height * imgWidth) / canvas.width; // Calculate image height to maintain aspect ratio
-  let heightLeft = imgHeight; // Remaining height to be added to PDF
+  const imgWidth = 210;
+  const pageHeight = 297;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  let heightLeft = imgHeight;
+  let position = 0;
 
-  let position = 0; // Y-position on the PDF page
-
-  // Add the first page
   pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
   heightLeft -= pageHeight;
 
-  // Add more pages if content overflows
-  while (heightLeft >= -10) { // -10 provides a small buffer for residual content
-    position = heightLeft - imgHeight; // Calculate position for the next page
-    pdf.addPage(); // Add a new page
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); // Add the image
-    heightLeft -= pageHeight; // Subtract page height from remaining content
+  while (heightLeft >= -10) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
   }
 
-  // Save the generated PDF file
   pdf.save(`invoice_${invoice.value.ID}.pdf`);
 };
 
-// --- Computed properties for dynamic content in template ---
-
-// Determines if the items section should be displayed (for Art Commission/Custom Merch)
 const showItemsSection = computed(() =>
-  invoice.value && ['Art Commission', 'Custom Merch'].includes(invoice.value.InvoiceType)
+  invoice.value && ['Art Commission', 'Custom Merch', 'Internal Expense'].includes(invoice.value.InvoiceType)
 );
 
-// Calculates the number of empty rows needed to fill the invoice table visually
-const maxItems = 10; // As seen in the design template
+const maxItems = 10;
 const emptyRowsCount = computed(() => {
     if (!invoice.value || !invoice.value.items) return maxItems;
     return Math.max(0, maxItems - invoice.value.items.length);
 });
 
-// Formats the invoice date to DD/MM/YYYY
 const formatInvoiceDate = (dateString) => {
     if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      // Check if the date is valid
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid date string provided to formatInvoiceDate:', dateString);
-        return 'Invalid Date';
-      }
-      return date.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    } catch (e) {
-      console.error('Error formatting date:', e);
-      return 'Error Date';
-    }
+    return new Date(dateString).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-// Determines the content of the "Notes" section based on invoice type
 const dynamicNotesContent = computed(() => {
   if (!invoice.value) return '';
-
-  if (invoice.value.InvoiceType === 'Artist Check') {
-    return `
-      Terima kasih atas kontribusinya dalam proyek ini.<br />
-      Pembayaran telah diterima sesuai kesepakatan.<br />
-      Harap simpan invoice ini sebagai bukti transaksi.
-    `;
-  } else {
-    // For 'Art Commission' and 'Custom Merch'
-    return `
-      Silakan lakukan pembayaran melalui:<br />
-      082255403036 (DANA) - ANSELLMA TITA P P<br />
-      1807517027 (BNI) - ANSELLMA TITA P P
-    `;
+  switch (invoice.value.InvoiceType) {
+    case 'Staff Check':
+      return `Terima kasih atas kontribusinya dalam proyek ini.<br />Pembayaran telah diterima sesuai kesepakatan.`;
+    case 'Internal Expense':
+      return `Pengeluaran internal untuk keperluan operasional. Harap simpan sebagai arsip.`;
+    default:
+      return `Silakan lakukan pembayaran melalui:<br />082255403036 (DANA) - ANSELLMA TITA P P<br />1807517027 (BNI) - ANSELLMA TITA P P`;
   }
 });
 
-// Determines the label for the 'For artists'/'For Commissioner/Customer' section
 const dynamicForLabel = computed(() => {
   if (!invoice.value) return '';
-
-  if (invoice.value.InvoiceType === 'Artist Check') {
-    return 'For artists';
-  } else {
-    return 'For Commissioner/Customer';
+  switch (invoice.value.InvoiceType) {
+    case 'Staff Check':
+      return 'For Staffs';
+    case 'Internal Expense':
+      return 'For Internal/Staff';
+    default:
+      return 'For Commissioner/Customer';
   }
 });
 
-// Determines the label for the "BILL TO" / "PAY TO" section
 const billToLabel = computed(() => {
   if (!invoice.value) return 'BILL TO';
-  return invoice.value.InvoiceType === 'Artist Check' ? 'PAY TO' : 'BILL TO';
+  return ['Artist Check', 'Internal Expense'].includes(invoice.value.InvoiceType) ? 'PAY TO' : 'BILL TO';
 });
 
-// Determines the name to display in the "BILL TO" / "PAY TO" section
 const billToName = computed(() => {
   if (!invoice.value) return 'N/A';
-  if (invoice.value.InvoiceType === 'Artist Check' && artist.value) {
-    return artist.value.Name;
-  } else if (client.value) { // For other invoice types, use client name
+  if (['Artist Check', 'Internal Expense'].includes(invoice.value.InvoiceType) && staff.value) {
+    return staff.value.Name;
+  } else if (client.value) {
     return client.value.Name;
   }
-  return 'N/A'; // Fallback if no matching client/artist found
+  return 'N/A';
 });
 
-// Determines the contact information to display in the "BILL TO" / "PAY TO" section
 const billToContact = computed(() => {
   if (!invoice.value) return 'N/A';
-  if (invoice.value.InvoiceType === 'Artist Check' && artist.value) {
-    // Display artist's contact or other relevant info (NIM, Role)
-    return artist.value.Contact || artist.value.NIM || artist.value.Role || 'No contact info provided';
-  } else if (client.value) { // For other invoice types, use client contact
+  if (['Artist Check', 'Internal Expense'].includes(invoice.value.InvoiceType) && staff.value) {
+    return staff.value.Contact || staff.value.NIM || staff.value.Role || 'No contact info';
+  } else if (client.value) {
     return client.value.Contact;
   }
-  return 'N/A'; // Fallback
+  return 'N/A';
 });
-
 </script>
 
 <template>
@@ -352,12 +212,16 @@ const billToContact = computed(() => {
           </div>
           <div class="main-title-right">
             <div class="invoice-label">INVOICE</div>
-            <div class="for-artists-label">{{ dynamicForLabel }}</div> </div>
+            <div class="for-staff-label">{{ dynamicForLabel }}</div>
+          </div>
         </div>
 
         <div class="invoice-details-bill-to">
           <div class="bill-to-section">
-            <div class="bill-to-label">{{ billToLabel }}</div> <p class="client-name">{{ billToName }}</p> <p class="client-contact">{{ billToContact }}</p> </div>
+            <div class="bill-to-label">{{ billToLabel }}</div>
+            <p class="client-name">{{ billToName }}</p>
+            <p class="client-contact">{{ billToContact }}</p>
+          </div>
           <div class="invoice-info-section">
             <div class="info-row">
               <span class="info-label">Invoice No:</span>
@@ -375,6 +239,7 @@ const billToContact = computed(() => {
             <tr>
               <th class="item-col">ITEMS</th>
               <th class="description-col">DESCRIPTION</th>
+              <th v-if="invoice.InvoiceType === 'Internal Expense'" class="purchase-location-col">PLACE OF PURCHASE</th>
               <th class="quantity-col">QUANTITY</th>
               <th class="total-col">TOTAL</th>
             </tr>
@@ -382,47 +247,42 @@ const billToContact = computed(() => {
           <tbody>
             <tr v-for="(item, index) in invoice.items" :key="item.ID || index" class="item-row">
               <td class="item-col">{{ index + 1 }}</td>
-              <!-- Updated line with nullish coalescing operator for robustness -->
               <td class="description-col">{{ item.Description ?? '' }}</td>
+              <td v-if="invoice.InvoiceType === 'Internal Expense'" class="purchase-location-col">{{ item.PurchaseLocation ?? '' }}</td>
               <td class="quantity-col">{{ item.Quantity }}</td>
               <td class="total-col">{{ formatRupiah(item.LineTotal) }}</td>
             </tr>
             <tr v-for="n in emptyRowsCount" :key="`empty-${n}`" class="item-row empty-row">
-              <td class="item-col"></td>
+              <td class="item-col">&nbsp;</td>
               <td class="description-col"></td>
+              <td v-if="invoice.InvoiceType === 'Internal Expense'" class="purchase-location-col"></td>
               <td class="quantity-col"></td>
               <td class="total-col"></td>
             </tr>
           </tbody>
           <tfoot>
             <tr class="total-row">
-              <td colspan="3" class="text-right total-label">Total</td> <td class="total-amount">{{ formatRupiah(invoice.TotalDue) }}</td>
+              <td :colspan="invoice.InvoiceType === 'Internal Expense' ? 4 : 3" class="text-right total-label">Total</td>
+              <td class="total-amount">{{ formatRupiah(invoice.TotalDue) }}</td>
             </tr>
           </tfoot>
         </table>
 
         <div class="notes-section">
           <p class="notes-label">Notes:</p>
-          <p class="notes-content" v-html="dynamicNotesContent"></p> </div>
+          <p class="notes-content" v-html="dynamicNotesContent"></p>
+        </div>
 
         <div class="contact-footer">
           <p class="contact-preset">
             Jika ada pertanyaan, silakan hubungi Ansel (Bendahara) via WhatsApp (082255403036)
           </p>
         </div>
-
       </v-card-text>
     </v-card>
 
     <v-alert v-else-if="error" type="error" class="mt-4">
       {{ error }}
-      <div class="mt-2" style="font-size: 0.9em;">
-        <strong>Troubleshooting:</strong><br>
-        • Make sure your API server is running<br>
-        • Check that the API endpoint URL is correct<br>
-        • Verify the invoice ID exists in your database<br>
-        • Check browser console for more details
-      </div>
     </v-alert>
     <v-progress-linear v-else-if="loading" indeterminate color="primary" class="mt-4"></v-progress-linear>
 
@@ -433,7 +293,7 @@ const billToContact = computed(() => {
 </template>
 
 <style scoped>
-/* GENERAL STYLES FOR INVOICE TEMPLATE */
+/* GENERAL STYLES */
 .invoice-template {
   font-family: Arial, sans-serif;
   color: #333;
@@ -443,111 +303,81 @@ const billToContact = computed(() => {
   box-sizing: border-box;
 }
 
-/* HEADER SECTION */
+/* HEADER */
 .invoice-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 10px;
 }
-
 .header-left {
   display: flex;
   align-items: center;
   flex: 1;
 }
-
 .kmitk-logo {
   max-width: 60px;
   height: auto;
   margin-right: 15px;
 }
-
 .org-details {
   font-size: 0.8em;
 }
 .org-title {
   font-weight: bold;
-  margin-bottom: 2px;
   font-size: 1.1em;
 }
 .org-subtitle {
   font-weight: bold;
-  margin-bottom: 2px;
   font-size: 1.2em;
 }
-.org-contact {
-  font-size: 0.9em;
-  line-height: 1.2;
-}
-.org-contact a {
-    color: #333;
-    text-decoration: none;
-}
-.org-contact a:hover {
-    text-decoration: underline;
-}
-
 .header-right {
   display: flex;
   justify-content: flex-end;
 }
 .folks-logo {
   max-width: 80px;
-  height: auto;
 }
-
 .header-divider {
   border-top: 2px solid #000;
   margin-bottom: 20px;
 }
 
-/* MAIN TITLES SECTION */
+/* MAIN TITLES */
 .main-titles {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   margin-bottom: 30px;
 }
-.main-title-left {
-  flex: 1;
-}
 .foreign-title {
   font-size: 1.8em;
   font-weight: bold;
   color: #2196F3;
-  margin: 0;
-  padding: 0;
 }
-
 .main-title-right {
   text-align: right;
 }
 .invoice-label {
   font-size: 2.5em;
   font-weight: bold;
-  color: #333;
 }
-.for-artists-label {
+.for-staff-label {
   font-size: 0.9em;
   color: #555;
   margin-top: -5px;
 }
 
-/* INVOICE DETAILS & BILL TO SECTION */
+/* BILL TO & INVOICE INFO */
 .invoice-details-bill-to {
   display: flex;
   justify-content: space-between;
   margin-bottom: 30px;
 }
-
 .bill-to-section {
   flex: 1;
   border: 1px solid #ddd;
   padding: 10px;
-  min-height: 100px;
-  box-sizing: border-box;
-  margin-right: 20px;
 }
 .bill-to-label {
   font-weight: bold;
@@ -556,38 +386,19 @@ const billToContact = computed(() => {
   margin-bottom: 5px;
   text-align: center;
 }
-.client-name, .client-contact {
-  margin: 0;
-  padding: 2px 5px;
-  font-size: 0.95em;
-}
-
 .invoice-info-section {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
   padding: 10px;
-  box-sizing: border-box;
   margin-left: 20px;
 }
-.invoice-info-section .info-row {
+.info-row {
   display: flex;
   justify-content: space-between;
   padding: 5px 0;
   border-bottom: 1px dashed #eee;
 }
-.invoice-info-section .info-row:last-child {
-  border-bottom: none;
-}
-.info-label {
-  font-weight: bold;
-}
-.info-value {
-  text-align: right;
-}
 
-/* ITEMS TABLE SECTION */
+/* ITEMS TABLE */
 .invoice-items-table {
   width: 100%;
   border-collapse: collapse;
@@ -598,58 +409,40 @@ const billToContact = computed(() => {
   border: 1px solid #000;
   padding: 8px;
   text-align: left;
-  vertical-align: top;
   font-size: 0.9em;
 }
 .invoice-items-table th {
   background-color: #eee;
-  font-weight: bold;
-  text-transform: uppercase;
 }
-/* Adjust column widths in CSS for the removed Category column */
-.invoice-items-table .item-col { width: 5%; text-align: center; }
-.invoice-items-table .description-col { width: 60%; }
-.invoice-items-table .quantity-col { width: 10%; text-align: right; }
-/* .invoice-items-table .category-col { width: 15%; text-align: left; } REMOVED */
-.invoice-items-table .total-col { width: 25%; text-align: right; }
+.item-col { width: 5%; text-align: center; }
+.description-col { width: auto; }
+.purchase-location-col { width: 25%; }
+.quantity-col { width: 10%; text-align: right; }
+.total-col { width: 25%; text-align: right; }
 
-
-/* Styling for empty rows in table */
-.invoice-items-table .empty-row {
-  height: 30px;
+.item-row.empty-row {
+  height: 35px; /* Increase height for better spacing */
 }
 
-.invoice-items-table tfoot .total-row {
+tfoot .total-row {
   font-weight: bold;
 }
-.invoice-items-table tfoot .total-label {
+tfoot .total-label {
   text-align: right;
   padding-right: 15px;
 }
-.invoice-items-table tfoot .total-amount {
+tfoot .total-amount {
   font-size: 1.1em;
   background-color: #eee;
 }
 
-/* NOTES SECTION */
+/* NOTES & FOOTER */
 .notes-section {
   margin-top: 20px;
   border: 1px solid #000;
   padding: 10px;
   min-height: 80px;
-  box-sizing: border-box;
 }
-.notes-label {
-  font-weight: bold;
-  margin-bottom: 5px;
-}
-.notes-content, .notes-preset {
-  margin: 0 0 5px 0;
-  font-size: 0.9em;
-  line-height: 1.3;
-}
-
-/* CONTACT/FOOTER SECTION */
 .contact-footer {
   text-align: center;
   margin-top: 30px;

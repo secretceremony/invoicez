@@ -1,69 +1,70 @@
+// src/stores/staff.js
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-const API_URL = 'http://localhost:3000/api/artists';
+const API_URL = 'http://localhost:3000/api/staff';
 
-export const useArtistStore = defineStore('artist', {
+export const useStaffStore = defineStore('staff', {
   state: () => ({
-    artists: [],
+    staff: [],
     loading: false,
     error: null,
   }),
   actions: {
-    async fetchArtists() {
+    async fetchStaff() {
       this.loading = true;
       this.error = null;
       try {
         const response = await axios.get(API_URL);
-        this.artists = response.data;
+        this.staff = response.data;
       } catch (err) {
-        this.error = err.message || 'Failed to fetch artists.';
+        this.error = err.message || 'Failed to fetch staff.';
         console.error(err);
       } finally {
         this.loading = false;
       }
     },
-    async addArtist(artistData) {
+    async addStaff(staffData) {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.post(API_URL, artistData);
-        this.artists.push(response.data);
+        const response = await axios.post(API_URL, staffData);
+        this.staff.push(response.data);
         return response.data;
       } catch (err) {
-        this.error = err.message || 'Failed to add artist.';
+        this.error = err.message || 'Failed to add staff member.';
         console.error(err);
         throw err;
       } finally {
         this.loading = false;
       }
     },
-    async updateArtist(id, artistData) {
+    async updateStaff(id, staffData) {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.put(`<span class="math-inline">\{API\_URL\}/</span>{id}`, artistData);
-        const index = this.artists.findIndex(a => a.ID === id);
+        const response = await axios.put(`${API_URL}/${id}`, staffData);
+        const index = this.staff.findIndex(s => s.ID === id);
         if (index !== -1) {
-          this.artists[index] = response.data;
+          this.staff[index] = response.data;
         }
         return response.data;
       } catch (err) {
-        this.error = err.message || 'Failed to update artist.';
+        this.error = err.message || 'Failed to update staff member.';
         console.error(err);
         throw err;
       } finally {
         this.loading = false;
       }
     },
-    async deleteArtist(id) {
+    async deleteStaff(id) {
       this.loading = true;
       this.error = null;
       try {
-        await axios.delete(`<span class="math-inline">\{API\_URL\}/</span>{id}`);
-        this.artists = this.artists.filter(a => a.ID !== id);
+        await axios.delete(`${API_URL}/${id}`);
+        this.staff = this.staff.filter(s => s.ID !== id);
       } catch (err) {
-        this.error = err.message || 'Failed to delete artist.';
+        this.error = err.message || 'Failed to delete staff member.';
         console.error(err);
         throw err;
       } finally {

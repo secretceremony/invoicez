@@ -2,50 +2,101 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useClientStore } from '@/stores/client';
-import { useArtistStore } from '@/stores/artist';
+import { useStaffStore  } from '@/stores/staff';
 import { useInvoiceStore } from '@/stores/invoice';
 import { useProductServiceStore } from '@/stores/productService';
 import { formatRupiah } from '@/utils/formatCurrency';
 
+// --- Core Setup ---
 const route = useRoute();
 const router = useRouter();
+
+// --- State Management (Pinia Stores) ---
 const clientStore = useClientStore();
-const artistStore = useArtistStore();
+const staffStore  = useStaffStore();
 const invoiceStore = useInvoiceStore();
 const productServiceStore = useProductServiceStore();
 
+// --- Component State ---
 const invoiceFormData = ref({
   ID: '',
   InvoiceType: null,
   Date: new Date().toISOString().split('T')[0],
   ClientID: null,
-  ArtistID: null,
+  StaffID: null,
   Subtotal: 0,
   DownPaymentAmount: 0,
-  TotalDue: 0,
   Status: 'Draft',
   Notes: '',
   items: [],
 });
 
+let newItemIdCounter = 0; // For unique client-side item keys
+
+// --- Static Data ---
 const invoiceTypes = [
   { text: 'Artist Check/Invoice', value: 'Artist Check' },
   { text: 'Art Commission Invoice', value: 'Art Commission' },
   { text: 'Custom Merch Invoice', value: 'Custom Merch' },
+  { text: 'Internal Expense (Staff)', value: 'Internal Expense' }
 ];
-
 const statuses = ['Draft', 'Sent', 'Paid', 'Partially Paid', 'Cancelled'];
 
-const formTitle = computed(() =>
-  route.params.id ? 'Edit Invoice' : 'Create New Invoice'
+// --- Computed Properties ---
+const isEditMode = computed(() => !!route.params.id);
+const formTitle = computed(() => isEditMode.value ? 'Edit Invoice' : 'Create New Invoice');
+
+// MODIFIED: Show items section for Internal Expense as well
+const showItemsSection = computed(() =>
+  ['Art Commission', 'Custom Merch', 'Internal Expense'].includes(invoiceFormData.value.InvoiceType)
 );
 
-onMounted(async () => {
-  await clientStore.fetchClients();
-  await artistStore.fetchArtists();
-  await productServiceStore.fetchProductsServices();
+const calculatedSubtotal = computed(() => {
+  if (showItemsSection.value) {
+    return invoiceFormData.value.items.reduce(
+      (sum, item) => sum + (parseFloat(item.LineTotal) || 0),
+      0
+    );
+  }
+  return parseFloat(invoiceFormData.value.Subtotal) || 0;
+});
 
-  if (route.params.id) {
+const calculatedTotalDue = computed(() => {
+  const subtotal = calculatedSubtotal.value;
+  const downPayment = parseFloat(invoiceFormData.value.DownPaymentAmount) || 0;
+  return subtotal - downPayment;
+});
+
+// --- Watchers ---
+watch(() => invoiceFormData.value.InvoiceType, (newType, oldType) => {
+  if (newType !== oldType) {
+    // When switching away from an item-based type, reset items array
+    if (!['Art Commission', 'Custom Merch', 'Internal Expense'].includes(newType)) {
+      invoiceFormData.value.items = [];
+    }
+    // When switching to a type that doesn't need a client, reset ClientID
+    if (!['Art Commission', 'Custom Merch'].includes(newType)) {
+        invoiceFormData.value.ClientID = null;
+    }
+    // For Internal Expense, artist is not relevant. For Artist Check it's optional
+    if (newType === 'Internal Expense') {
+        invoiceFormData.value.StaffID = null;
+    }
+    // Reset amounts when type changes to avoid carrying over old values
+    invoiceFormData.value.Subtotal = 0;
+    invoiceFormData.value.DownPaymentAmount = 0;
+  }
+});
+
+// --- Lifecycle Hooks ---
+onMounted(async () => {
+  await Promise.all([
+    clientStore.fetchClients(),
+    staffStore.fetchStaff(),
+    productServiceStore.fetchProductsServices(),
+  ]);
+
+  if (isEditMode.value) {
     try {
       const invoiceToEdit = await invoiceStore.fetchInvoiceById(route.params.id);
       if (invoiceToEdit) {
@@ -53,19 +104,15 @@ onMounted(async () => {
           ...invoiceToEdit,
           Subtotal: parseFloat(invoiceToEdit.Subtotal || 0),
           DownPaymentAmount: parseFloat(invoiceToEdit.DownPaymentAmount || 0),
-          TotalDue: parseFloat(invoiceToEdit.TotalDue || 0),
-          items: invoiceToEdit.items
-            ? invoiceToEdit.items.map(item => ({
-                // Ensure existing items also have an 'id' for consistent keying,
-                // though usually fetched items would have a proper backend ID.
-                // Using the backend ID is highly recommended if available.
-                id: item.ID || Date.now() + Math.random(), // Fallback if no backend ID
-                ...item,
-                Quantity: parseFloat(item.Quantity || 0),
-                UnitPrice: parseFloat(item.UnitPrice || 0),
-                LineTotal: parseFloat(item.LineTotal || 0),
-              }))
-            : [],
+          // MODIFIED: Ensure new fields are handled when loading data
+          items: invoiceToEdit.items ? invoiceToEdit.items.map(item => ({
+            ...item,
+            id: item.ID || `new-item-${newItemIdCounter++}`,
+            Quantity: parseFloat(item.Quantity || 0),
+            UnitPrice: parseFloat(item.UnitPrice || 0),
+            LineTotal: parseFloat(item.LineTotal || 0),
+            PurchaseLocation: item.PurchaseLocation || '', // Handle new field
+          })) : [],
         };
       }
     } catch (error) {
@@ -74,17 +121,19 @@ onMounted(async () => {
   }
 });
 
-const showItemsSection = computed(() =>
-  ['Art Commission', 'Custom Merch'].includes(invoiceFormData.value.InvoiceType)
-);
+// --- Methods ---
+const updateLineTotal = (item) => {
+  const qty = parseFloat(item.Quantity) || 0;
+  const price = parseFloat(item.UnitPrice) || 0;
+  item.LineTotal = qty * price;
+};
 
+// MODIFIED: Add `PurchaseLocation` to new items
 const addItem = () => {
   invoiceFormData.value.items.push({
-    // IMPORTANT: Use a truly unique key for each item, especially when adding/removing from a list.
-    // Date.now() + Math.random() is a simple client-side way to generate a unique ID.
-    // If your backend assigns IDs, use those once the item is saved.
-    id: Date.now() + Math.random(),
+    id: `new-item-${newItemIdCounter++}`,
     Description: '',
+    PurchaseLocation: '', // New field for internal expenses
     Quantity: 1,
     UnitPrice: 0,
     LineTotal: 0,
@@ -95,43 +144,38 @@ const removeItem = (index) => {
   invoiceFormData.value.items.splice(index, 1);
 };
 
-const calculatedSubtotal = computed(() => {
-  if (!showItemsSection.value) return parseFloat(invoiceFormData.value.Subtotal || 0);
-  return invoiceFormData.value.items.reduce(
-    (sum, item) => sum + (parseFloat(item.LineTotal) || 0),
-    0
-  );
-});
-
-watch(
-  calculatedSubtotal,
-  (newVal) => {
-    if (showItemsSection.value) {
-      invoiceFormData.value.Subtotal = newVal;
-    }
-  },
-  { immediate: true }
-);
-
-
-const calculatedTotalDue = computed(() => {
-  const sub = calculatedSubtotal.value;
-  const downPayment = parseFloat(invoiceFormData.value.DownPaymentAmount) || 0;
-  return sub - downPayment;
-});
-
-watch(calculatedTotalDue, (newVal) => {
-  invoiceFormData.value.TotalDue = newVal;
-});
-
+const updateItemFromMaster = (selectedName, item) => {
+  const selectedProduct = productServiceStore.productsServices.find(p => p.Name === selectedName);
+  if (selectedProduct) {
+    item.Description = selectedProduct.Name;
+    item.UnitPrice = selectedProduct.UnitPrice;
+  } else {
+    item.Description = selectedName;
+  }
+  updateLineTotal(item);
+};
 
 async function saveInvoice() {
+  const payload = {
+    ...invoiceFormData.value,
+    Subtotal: calculatedSubtotal.value,
+    TotalDue: calculatedTotalDue.value,
+    items: invoiceFormData.value.items.map(item => {
+      // If the invoice type is not Internal Expense, don't save the PurchaseLocation
+      if (invoiceFormData.value.InvoiceType !== 'Internal Expense') {
+          delete item.PurchaseLocation;
+      }
+      const { id, ...itemToSave } = item;
+      return itemToSave;
+    }),
+  };
+
   try {
-    if (route.params.id) {
-      await invoiceStore.updateInvoice(invoiceFormData.value.ID, invoiceFormData.value);
+    if (isEditMode.value) {
+      await invoiceStore.updateInvoice(payload.ID, payload);
       alert('Invoice updated successfully!');
     } else {
-      await invoiceStore.addInvoice(invoiceFormData.value);
+      await invoiceStore.addInvoice(payload);
       alert('Invoice created successfully!');
     }
     router.push({ name: 'invoice-list' });
@@ -140,24 +184,6 @@ async function saveInvoice() {
     alert('Failed to save invoice. Check console for details.');
   }
 }
-
-// Autocomplete logic for items from master list
-const updateItemFromMaster = (selectedName, itemIndex) => {
-  // Find the full product object based on the selected name
-  const selectedProduct = productServiceStore.productsServices.find(
-    (product) => product.Name === selectedName
-  );
-
-  if (selectedProduct) {
-    invoiceFormData.value.items[itemIndex].Description = selectedProduct.Name;
-    invoiceFormData.value.items[itemIndex].UnitPrice = selectedProduct.UnitPrice;
-  } else {
-    // If user types something not in the master list, keep the typed value
-    invoiceFormData.value.items[itemIndex].Description = selectedName;
-    // Optionally, reset UnitPrice if the description doesn't match a master product
-    // invoiceFormData.value.items[itemIndex].UnitPrice = 0;
-  }
-};
 </script>
 
 <template>
@@ -196,23 +222,20 @@ const updateItemFromMaster = (selectedName, itemIndex) => {
                 item-value="ID"
                 label="Select Client"
                 :loading="clientStore.loading"
-                :disabled="clientStore.loading"
                 required
               ></v-select>
             </v-col>
           </v-row>
-
-          <v-row v-if="['Artist Check', 'Art Commission'].includes(invoiceFormData.InvoiceType)">
+          <v-row v-if="['Artist Check', 'Art Commission', 'Internal Expense'].includes(invoiceFormData.InvoiceType)">
             <v-col cols="12">
               <v-select
-                v-model="invoiceFormData.ArtistID"
-                :items="artistStore.artists"
+                v-model="invoiceFormData.StaffID"
+                :items="staffStore.staff"
                 item-title="Name"
                 item-value="ID"
-                label="Select Artist"
-                :loading="artistStore.loading"
-                :disabled="artistStore.loading"
-                :required="invoiceFormData.InvoiceType === 'Artist Check'"
+                :label="invoiceFormData.InvoiceType === 'Internal Expense' ? 'Staff Member' : 'Select Staff'"
+                :loading="staffStore.loading"
+                :required="invoiceFormData.InvoiceType !== 'Art Commission'"
               ></v-select>
             </v-col>
           </v-row>
@@ -225,32 +248,49 @@ const updateItemFromMaster = (selectedName, itemIndex) => {
                 type="number"
                 min="0"
                 required
-                prepend-inner-icon="mdi-currency-usd"
+                prepend-inner-icon="mdi-cash"
               ></v-text-field>
             </v-col>
           </v-row>
+
 
           <template v-if="showItemsSection">
             <h3 class="mt-4 mb-2">Invoice Items</h3>
             <v-divider class="mb-4"></v-divider>
             <div v-for="(item, index) in invoiceFormData.items" :key="item.id" class="mb-4">
               <v-row align="center">
-                <v-col cols="12" sm="6">
+
+                <v-col v-if="invoiceFormData.InvoiceType !== 'Internal Expense'" cols="12" md="5">
                   <v-autocomplete
                     v-model="item.Description"
-                    :items="productServiceStore.productsServices"
-                    item-title="Name"
-                    item-value="Name"
+                    :items="productServiceStore.productsServices.map(p => p.Name)"
                     label="Description"
                     density="compact"
                     hide-details
-                    @update:model-value="selectedName => updateItemFromMaster(selectedName, index)"
-                    :loading="productServiceStore.loading"
-                    :disabled="productServiceStore.loading"
                     clearable
+                    @update:model-value="selectedName => updateItemFromMaster(selectedName, item)"
                   ></v-autocomplete>
                 </v-col>
-                <v-col cols="4" sm="2">
+
+                <v-col v-if="invoiceFormData.InvoiceType === 'Internal Expense'" cols="12" md="3">
+                   <v-text-field
+                      v-model="item.Description"
+                      label="Item / Expense Description"
+                      density="compact"
+                      hide-details
+                    ></v-text-field>
+                </v-col>
+
+                <v-col v-if="invoiceFormData.InvoiceType === 'Internal Expense'" cols="12" md="3">
+                   <v-text-field
+                      v-model="item.PurchaseLocation"
+                      label="Place of Purchase"
+                      density="compact"
+                      hide-details
+                    ></v-text-field>
+                </v-col>
+
+                <v-col cols="4" :md="invoiceFormData.InvoiceType === 'Internal Expense' ? '1' : '1'">
                   <v-text-field
                     v-model.number="item.Quantity"
                     label="Qty"
@@ -258,14 +298,10 @@ const updateItemFromMaster = (selectedName, itemIndex) => {
                     min="1"
                     density="compact"
                     hide-details
-                    @update:model-value="() => {
-                        const qty = parseFloat(item.Quantity) || 0;
-                        const price = parseFloat(item.UnitPrice) || 0;
-                        item.LineTotal = qty * price;
-                    }"
+                    @update:model-value="() => updateLineTotal(item)"
                   ></v-text-field>
                 </v-col>
-                <v-col cols="4" sm="2">
+                <v-col cols="8" :md="invoiceFormData.InvoiceType === 'Internal Expense' ? '2' : '3'">
                   <v-text-field
                     v-model.number="item.UnitPrice"
                     label="Unit Price (IDR)"
@@ -273,32 +309,27 @@ const updateItemFromMaster = (selectedName, itemIndex) => {
                     min="0"
                     density="compact"
                     hide-details
-                    @update:model-value="() => {
-                        const qty = parseFloat(item.Quantity) || 0;
-                        const price = parseFloat(item.UnitPrice) || 0;
-                        item.LineTotal = qty * price;
-                    }"
+                    @update:model-value="() => updateLineTotal(item)"
                   ></v-text-field>
                 </v-col>
-                <v-col cols="12" sm="1">
-                  <v-text-field
-                    :model-value="item.LineTotal"
-                    label="Line Total (IDR)"
+                <v-col cols="10" md="2">
+                   <v-text-field
+                    :model-value="formatRupiah(item.LineTotal)"
+                    label="Line Total"
                     readonly
                     density="compact"
                     hide-details
+                    variant="plain"
                   ></v-text-field>
                 </v-col>
-                <v-col cols="12" sm="1" class="d-flex justify-end">
-                  <v-btn icon color="error" size="small" @click="removeItem(index)">
-                    <v-icon>mdi-close-circle</v-icon>
-                  </v-btn>
+                <v-col cols="2" md="1" class="text-right">
+                  <v-btn icon="mdi-close-circle" color="error" variant="text" @click="removeItem(index)"></v-btn>
                 </v-col>
               </v-row>
-              <v-divider v-if="index < invoiceFormData.items.length - 1" class="my-2"></v-divider>
+              <v-divider v-if="index < invoiceFormData.items.length - 1" class="my-3"></v-divider>
             </div>
             <v-btn color="secondary" @click="addItem" class="mb-4">
-              <v-icon left>mdi-plus</v-icon> Add Item
+              <v-icon start>mdi-plus</v-icon> Add Item
             </v-btn>
           </template>
 
@@ -315,15 +346,14 @@ const updateItemFromMaster = (selectedName, itemIndex) => {
             <v-col cols="12" md="6">
               <v-text-field
                 v-model.number="invoiceFormData.DownPaymentAmount"
-                label="Down Payment Amount (IDR)"
+                label="Down Payment (IDR)"
                 type="number"
                 min="0"
-                :disabled="invoiceFormData.InvoiceType === 'Artist Check'"
-                prepend-inner-icon="mdi-currency-usd"
+                :disabled="invoiceFormData.InvoiceType === 'Artist Check' || invoiceFormData.InvoiceType === 'Internal Expense'"
+                prepend-inner-icon="mdi-cash"
               ></v-text-field>
             </v-col>
           </v-row>
-
           <v-row>
             <v-col cols="12" md="6">
               <v-text-field
@@ -343,24 +373,16 @@ const updateItemFromMaster = (selectedName, itemIndex) => {
               ></v-select>
             </v-col>
           </v-row>
-
-          <v-row>
+           <v-row>
             <v-col cols="12">
-              <v-textarea
-                v-model="invoiceFormData.Notes"
-                label="Notes"
-                rows="3"
-              ></v-textarea>
+              <v-textarea v-model="invoiceFormData.Notes" label="Notes" rows="3"></v-textarea>
             </v-col>
           </v-row>
-
           <v-btn type="submit" color="success" :loading="invoiceStore.loading" class="mr-4">
-            <v-icon left>mdi-content-save</v-icon>
-            Save Invoice
+            <v-icon start>mdi-content-save</v-icon> Save Invoice
           </v-btn>
-          <v-btn color="error" @click="router.back()">
-            <v-icon left>mdi-cancel</v-icon>
-            Cancel
+          <v-btn color="error" variant="text" @click="router.back()">
+            <v-icon start>mdi-cancel</v-icon> Cancel
           </v-btn>
         </v-form>
       </v-card-text>

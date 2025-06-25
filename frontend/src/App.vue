@@ -21,8 +21,8 @@ const drawer = ref(false);
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-palette"
-          title="Artists"
-          :to="{ name: 'artists' }"
+          title="Staff"
+          :to="{ name: 'staff' }"
         ></v-list-item>
         <v-list-item
           prepend-icon="mdi-tag" title="Products & Services" :to="{ name: 'products-services' }" ></v-list-item>

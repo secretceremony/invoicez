@@ -16,7 +16,7 @@ const headers = ref([
   { title: 'Type', key: 'InvoiceType' },
   { title: 'Date', key: 'Date' },
   { title: 'Client ID', key: 'ClientID' },
-  { title: 'Artist ID', key: 'ArtistID' },
+  { title: 'Staff ID', key: 'StaffID' },
   { title: 'Subtotal', key: 'Subtotal' },
   { title: 'Down Payment', key: 'DownPaymentAmount' },
   { title: 'Total Due', key: 'TotalDue' },
