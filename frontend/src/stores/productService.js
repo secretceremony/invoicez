@@ -1,8 +1,9 @@
-// src/stores/productService.js
+// frontend/src/stores/productService.js
 import { defineStore } from 'pinia';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000/api/products-services'; // New dedicated API endpoint
+// IMPORTANT: Replace with your actual Google Apps Script Web App URL
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxYCYA5IIy2gQphU_oiAoGR1DOU6J99gEPBD3xpPXaUI5AgBY6Kd6LVQVD4TRgL11x7xQ/exec';
 
 export const useProductServiceStore = defineStore('productService', {
   state: () => ({
@@ -15,7 +16,7 @@ export const useProductServiceStore = defineStore('productService', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.get(API_URL);
+        const response = await axios.get(`${WEB_APP_URL}?path=products-services`);
         this.productsServices = response.data;
       } catch (err) {
         this.error = err.message || 'Failed to fetch products/services.';
@@ -28,7 +29,11 @@ export const useProductServiceStore = defineStore('productService', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.post(API_URL, productData);
+        const response = await axios.post(WEB_APP_URL, {
+          path: 'products-services',
+          method: 'POST',
+          body: productData,
+        });
         this.productsServices.push(response.data);
         return response.data;
       } catch (err) {
@@ -43,7 +48,12 @@ export const useProductServiceStore = defineStore('productService', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.put(`${API_URL}/${id}`, productData);
+        const response = await axios.post(WEB_APP_URL, {
+          path: 'products-services',
+          method: 'PUT',
+          id: id,
+          body: productData,
+        });
         const index = this.productsServices.findIndex(p => p.ID === id);
         if (index !== -1) {
           this.productsServices[index] = response.data;
@@ -61,7 +71,11 @@ export const useProductServiceStore = defineStore('productService', {
       this.loading = true;
       this.error = null;
       try {
-        await axios.delete(`${API_URL}/${id}`);
+        await axios.post(WEB_APP_URL, {
+          path: 'products-services',
+          method: 'DELETE',
+          id: id,
+        });
         this.productsServices = this.productsServices.filter(p => p.ID !== id);
       } catch (err) {
         this.error = err.message || 'Failed to delete product/service.';
