@@ -1,9 +1,8 @@
 // frontend/src/stores/invoice.js
-import { defineStore } from 'pinia';
-import axios from 'axios';
+import { defineStore } from 'pinia'
+import axios from 'axios'
 
-// IMPORTANT: Replace with your actual Google Apps Script Web App URL
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxYCYA5IIy2gQphU_oiAoGR1DOU6J99gEPBD3xpPXaUI5AgBY6Kd6LVQVD4TRgL11x7xQ/exec';
+const API_URL = 'http://localhost:3000/api/invoices';
 
 export const useInvoiceStore = defineStore('invoice', {
   state: () => ({
@@ -16,7 +15,7 @@ export const useInvoiceStore = defineStore('invoice', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.get(`${WEB_APP_URL}?path=invoices`);
+        const response = await axios.get(API_URL);
         this.invoices = response.data;
       } catch (err) {
         this.error = err.message || 'Failed to fetch invoices.';
@@ -30,7 +29,7 @@ export const useInvoiceStore = defineStore('invoice', {
       this.loading = true;
       this.error = null;
       try {
-        const url = `${WEB_APP_URL}?path=invoices&id=${encodeURIComponent(id)}`;
+        const url = `${API_URL}/${encodeURIComponent(id)}`;
         const response = await axios.get(url);
         return response.data;
       } catch (err) {
@@ -46,11 +45,7 @@ export const useInvoiceStore = defineStore('invoice', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.post(WEB_APP_URL, {
-          path: 'invoices',
-          method: 'POST',
-          body: invoiceData,
-        });
+        const response = await axios.post(API_URL, invoiceData);
         this.invoices.push(response.data);
         return response.data;
       } catch (err) {
@@ -66,12 +61,8 @@ export const useInvoiceStore = defineStore('invoice', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.post(WEB_APP_URL, {
-          path: 'invoices',
-          method: 'PUT',
-          id: id,
-          body: invoiceData,
-        });
+        const url = `${API_URL}/${encodeURIComponent(id)}`;
+        const response = await axios.put(url, invoiceData);
 
         const index = this.invoices.findIndex(inv => inv.ID === id);
         if (index !== -1) {
@@ -91,11 +82,8 @@ export const useInvoiceStore = defineStore('invoice', {
       this.loading = true;
       this.error = null;
       try {
-        await axios.post(WEB_APP_URL, {
-          path: 'invoices',
-          method: 'DELETE',
-          id: id,
-        });
+        const url = `${API_URL}/${encodeURIComponent(id)}`;
+        await axios.delete(url);
         this.invoices = this.invoices.filter(inv => inv.ID !== id);
       } catch (err) {
         this.error = err.message || 'Failed to delete invoice.';

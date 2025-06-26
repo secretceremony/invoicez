@@ -1,9 +1,8 @@
-// frontend/src/stores/staff.js
-import { defineStore } from 'pinia';
-import axios from 'axios';
+// src/stores/staff.js
+import { defineStore } from 'pinia'
+import axios from 'axios'
 
-// IMPORTANT: Replace with your actual Google Apps Script Web App URL
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxYCYA5IIy2gQphU_oiAoGR1DOU6J99gEPBD3xpPXaUI5AgBY6Kd6LVQVD4TRgL11x7xQ/exec';
+const API_URL = 'http://localhost:3000/api/staff';
 
 export const useStaffStore = defineStore('staff', {
   state: () => ({
@@ -16,7 +15,7 @@ export const useStaffStore = defineStore('staff', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.get(`${WEB_APP_URL}?path=staff`);
+        const response = await axios.get(API_URL);
         this.staff = response.data;
       } catch (err) {
         this.error = err.message || 'Failed to fetch staff.';
@@ -29,11 +28,7 @@ export const useStaffStore = defineStore('staff', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.post(WEB_APP_URL, {
-          path: 'staff',
-          method: 'POST',
-          body: staffData,
-        });
+        const response = await axios.post(API_URL, staffData);
         this.staff.push(response.data);
         return response.data;
       } catch (err) {
@@ -48,12 +43,7 @@ export const useStaffStore = defineStore('staff', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.post(WEB_APP_URL, {
-          path: 'staff',
-          method: 'PUT',
-          id: id,
-          body: staffData,
-        });
+        const response = await axios.put(`${API_URL}/${id}`, staffData);
         const index = this.staff.findIndex(s => s.ID === id);
         if (index !== -1) {
           this.staff[index] = response.data;
@@ -71,11 +61,7 @@ export const useStaffStore = defineStore('staff', {
       this.loading = true;
       this.error = null;
       try {
-        await axios.post(WEB_APP_URL, {
-          path: 'staff',
-          method: 'DELETE',
-          id: id,
-        });
+        await axios.delete(`${API_URL}/${id}`);
         this.staff = this.staff.filter(s => s.ID !== id);
       } catch (err) {
         this.error = err.message || 'Failed to delete staff member.';

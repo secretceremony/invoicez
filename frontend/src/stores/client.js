@@ -1,9 +1,7 @@
-// frontend/src/stores/client.js
-import { defineStore } from 'pinia';
-import axios from 'axios';
+import { defineStore } from 'pinia'
+import axios from 'axios'
 
-// IMPORTANT: Replace with your actual Google Apps Script Web App URL
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxYCYA5IIy2gQphU_oiAoGR1DOU6J99gEPBD3xpPXaUI5AgBY6Kd6LVQVD4TRgL11x7xQ/exec';
+const API_URL = 'http://localhost:3000/api/clients';
 
 export const useClientStore = defineStore('client', {
   state: () => ({
@@ -16,12 +14,11 @@ export const useClientStore = defineStore('client', {
       this.loading = true;
       this.error = null;
       try {
-        // GET requests are sent with URL parameters
-        const response = await axios.get(`${WEB_APP_URL}?path=clients`);
+        const response = await axios.get(API_URL);
         this.clients = response.data;
       } catch (err) {
         this.error = err.message || 'Failed to fetch clients.';
-        console.error('Error fetching clients:', err);
+        console.error(err);
       } finally {
         this.loading = false;
       }
@@ -30,12 +27,7 @@ export const useClientStore = defineStore('client', {
       this.loading = true;
       this.error = null;
       try {
-        // All mutations (POST, PUT, DELETE) are sent as POST requests
-        const response = await axios.post(WEB_APP_URL, {
-          path: 'clients',
-          method: 'POST',
-          body: clientData,
-        });
+        const response = await axios.post(API_URL, clientData);
         this.clients.push(response.data);
         return response.data;
       } catch (err) {
@@ -50,12 +42,8 @@ export const useClientStore = defineStore('client', {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.post(WEB_APP_URL, {
-          path: 'clients',
-          method: 'PUT',
-          id: id,
-          body: clientData,
-        });
+        // CORRECTED: Used proper template literal syntax
+        const response = await axios.put(`${API_URL}/${id}`, clientData);
         const index = this.clients.findIndex(c => c.ID === id);
         if (index !== -1) {
           this.clients[index] = response.data;
@@ -73,11 +61,8 @@ export const useClientStore = defineStore('client', {
       this.loading = true;
       this.error = null;
       try {
-        await axios.post(WEB_APP_URL, {
-          path: 'clients',
-          method: 'DELETE',
-          id: id,
-        });
+        // CORRECTED: Used proper template literal syntax
+        await axios.delete(`${API_URL}/${id}`);
         this.clients = this.clients.filter(c => c.ID !== id);
       } catch (err) {
         this.error = err.message || 'Failed to delete client.';
