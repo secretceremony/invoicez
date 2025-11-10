@@ -1,0 +1,8 @@
+ID,InvoiceID,Description,Quantity,UnitPrice,LineTotal,PurchaseLocation
+9ba56282-a5b3-4011-9101-be1fbac0fbbf,FOLKS/EXP/02/001,Yoshida Rental,1,65000,65000,@rentcos_nci
+6a853172-0c33-4056-a237-7c6418d94d94,FOLKS/EXP/02/002,Asa Mitaka Rental,1,50000,50000,@cinnamon.rent
+af53d526-57ea-4888-a4b9-becd599bd05f,FOLKS/EXP/12/003,Yuji Rental,1,50000,50000,@rentcos_nci
+2ad3668a-4be6-47ec-9551-3d5cdfca9486,FOLKS/EXP/12/004,Frieren Rental,1,30000,30000,@michiirent
+ed04bba2-dee7-4e20-9ebd-35c67879735a,FOLKS/EXP/12/005,Makan Siang,1,15000,15000,Warung Ayam
+51da3a47-a8a2-494c-ba5a-5a1e5ffd7838,FOLKS/EXP/12/006,Bensin,1,40000,40000,SPBU
+544aeb4d-0a17-4bd6-bc04-d2e6a82d21b3,FOLKS/EXP/12/007,Tighnari Rent,1,150000,150000,skycosrent

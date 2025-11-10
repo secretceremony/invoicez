@@ -1,0 +1,9 @@
+ID,InvoiceType,Date,ClientID,StaffID,Subtotal,DownPaymentAmount,TotalDue,Status,Notes
+FOLKS/EXP/02/001,Internal Expense,2025-02-05,,5,65000,0,65000,Paid,
+FOLKS/EXP/02/002,Internal Expense,2025-02-05,,4,50000,0,50000,Paid,
+FOLKS/EXP/12/003,Internal Expense,2024-12-06,,6,50000,0,50000,Paid,Half Payment
+FOLKS/EXP/12/004,Internal Expense,2024-12-06,,4,30000,0,30000,Paid,Half Payment
+FOLKS/EXP/12/005,Internal Expense,2024-12-06,,5,15000,0,15000,Paid,
+FOLKS/EXP/12/006,Internal Expense,2024-12-06,,7,40000,0,40000,Paid,
+FOLKS/EXP/12/007,Internal Expense,2024-12-08,,9,150000,0,150000,Paid,Full Payment
+FOLKS/INV/04/001,Staff Check,2025-04-13,,15,88400,0,88400,Paid,Honor Artist Batch 2
