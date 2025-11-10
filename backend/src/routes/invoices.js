@@ -1,5 +1,32 @@
 import { Router } from 'express';
 import { callProc } from '../db.js';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import compression from 'compression';
+
+const prod = process.env.NODE_ENV === 'production';
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+app.use(compression());
+
+// Batasi ukuran body (hindari payload besar)
+app.use(express.json({ limit: '200kb' }));
+
+// CORS: batasi origin di production
+const allowed = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+app.use(cors(prod && allowed.length ? { origin: allowed } : {}));
+
+// Rate limit dasar untuk endpoint /api
+app.use('/api', rateLimit({
+  windowMs: 60 * 1000,
+  max: 120, // 120 req/menit per IP
+  standardHeaders: true,
+  legacyHeaders: false
+}));
+
+
 
 const router = Router();
 
