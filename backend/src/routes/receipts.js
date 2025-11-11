@@ -76,4 +76,19 @@ r.delete('/receipts/:id', async (req, res) => {
   }
 });
 
+r.get('/receipts', async (req, res) => {
+  let { code, from, to } = req.query;
+  try {
+    if (code) {
+      try { code = decodeURIComponent(code); } catch {}
+    } else {
+      code = null;
+    }
+    const sets = await callProcSets('SearchReceiptsTx', [code, from ?? null, to ?? null]);
+    res.json(sets[0] ?? []);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 export default r;

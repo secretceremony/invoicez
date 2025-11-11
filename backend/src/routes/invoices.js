@@ -164,4 +164,21 @@ r.get('/invoices/:code/handovers', async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// List/Search invoices:
+// GET /api/invoices?q=COMM&status=Sent&from=2025-09-01%2000:00:00&to=2025-10-01%2000:00:00
+r.get('/invoices', async (req, res) => {
+  const { q, status, from, to } = req.query;
+  try {
+    const sets = await callProcSets('SearchInvoicesTx', [
+      q ?? null,
+      status ?? null,
+      from ?? null,
+      to ?? null
+    ]);
+    res.json(sets[0] ?? []);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 export default r;
