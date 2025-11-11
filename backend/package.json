@@ -1,20 +1,23 @@
 {
   "name": "invoicez-api",
   "version": "0.1.0",
-  "description": "Backend Express + MySQL untuk Invoicez",
+  "description": "Invoicez Express API (MySQL + Stored Procedures)",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "dev": "node src/index.js",
-    "start": "node src/index.js",
-    "load": "node scripts/load_from_csv.js backend/data"
+    "dev": "nodemon --watch src --ext js --exec \"node src/index.js\"",
+    "start": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "csv-parse": "^5.5.6",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "mysql2": "^3.11.0"
+    "mysql2": "^3.11.3"
   },
-  "engines": { "node": ">=18" }
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
 }
