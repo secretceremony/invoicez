@@ -1,185 +1,366 @@
-# Invoicez - Invoice Management System
+# Invoicez — Invoice Management System
 
-**Important Note on Usage:** This repository and its contents are intended for personal use only. If you find this project useful and wish to adapt or be inspired by its concepts, design, or code for your own work, you must credit the original author, `secretceremony`, and create your own implementation from scratch. Direct copying or unauthorized distribution is not permitted.
+> **Important usage note**
+> This repository and its contents are intended for **personal use** only. If you find this project useful and wish to adapt or be inspired by its concepts, design, or code for your own work, you **must credit** the original author, `secretceremony`, and create your own implementation from scratch. **Direct copying or unauthorized distribution is not permitted.**
+
+> **Migration update (Nov 2025)**
+> Invoicez has migrated from a **Google Sheets** backend to **MySQL + Express.js**.
+> Historical pieces are marked with strike-through for clarity (see **Historical / deprecated (Google Sheets) notes**).
+
+## Table of contents
+
+* [Features](#features)
+* [Tech stack & how it’s used](#tech-stack--how-its-used)
+* [Project structure](#project-structure)
+* [Prerequisites](#prerequisites)
+* [Quick start](#quick-start)
+* [Backend & database setup](#backend--database-setup)
+* [Frontend setup](#frontend-setup)
+* [Running locally](#running-locally)
+* [API testing](#api-testing)
+* [Offline dev tools you’ll want](#offline-dev-tools-youll-want)
+* [Important notes & troubleshooting](#important-notes--troubleshooting)
+* [Historical / deprecated (Google Sheets) notes](#historical--deprecated-google-sheets-notes)
+* [Credits](#credits)
+* [Contributing / feedback](#contributing--feedback)
+
+---
 
 ## Features
 
-* **Client Management:** Add, view, edit, and delete client information.
-* **Artist Management:** Add, view, edit, and delete artist profiles.
-* **Product & Service Catalog:** Maintain a master list of products and services with descriptions, unit prices, and categories, which can be used to populate invoice items.
-* **Invoice Creation & Management:**
-    * Create new invoices for "Artist Check," "Art Commission," or "Custom Merch."
-    * Automatically generate unique invoice IDs (e.g., `FOLKS/COMM/06/001`) based on type, month, and a sequential number.
-    * Add multiple items to "Art Commission" and "Custom Merch" invoices with quantity, unit price, and calculated line totals.
-    * Track subtotal, down payment, and total due amounts.
-    * Manage invoice statuses (Draft, Sent, Paid, Partially Paid, Cancelled).
-    * Add notes to invoices.
-* **Invoice Details & PDF Export:**
-    * View detailed information for individual invoices.
-    * Generate and download professional PDF invoices using `html2canvas` and `jspdf`.
-* **Responsive User Interface:** Built with Vuetify for a consistent and responsive design.
+* **Client management** — CRUD.
+* **Staff/Artist management** — CRUD for internal users.
+* **Product & service catalog** — descriptions, unit prices, categories.
+* **Invoices**
 
-## Technologies Used
+  * Types: **Staff Check**, **Art Commission**, **Custom Merch**, **Internal Expense**.
+  * Multiple line items (qty, unit price, line totals).
+  * Subtotal, down payment, total due.
+  * Statuses: Draft, Sent, Paid, Partially Paid, Cancelled.
+  * Free-form notes.
+* **Invoice detail + PDF export** (via `html2canvas` + `jspdf`).
+* **Responsive UI** built with **Vuetify**.
 
-### Frontend
+---
 
-* **Vue.js 3:** Progressive JavaScript framework for building user interfaces.
-* **Pinia:** Intuitive state management library for Vue.js.
-* **Vue Router 4:** Official router for Vue.js.
-* **Vuetify 3:** Vue UI Library with a Material Design component framework.
-* **Vite:** Fast development build tool.
-* **html2canvas:** Library to take screenshots of web pages or parts of them.
-* **jsPDF:** Library to generate PDFs in JavaScript.
-* **Axios:** Promise-based HTTP client for the browser and Node.js.
+## Tech stack & how it’s used
 
-### Backend
+**Frontend**
 
-* **Node.js:** JavaScript runtime environment.
-* **Express.js:** Fast, unopinionated, minimalist web framework for Node.js.
-* **Google Sheets API (`googleapis`, `google-auth-library`):** Used for reading, writing, and updating data in Google Sheets, which serves as the database for the application.
-* **`dotenv`:** Loads environment variables from a `.env` file.
-* **`cors`:** Middleware to enable Cross-Origin Resource Sharing.
-* **`uuid`:** For generating unique IDs (e.g., for clients, artists, and individual invoice items).
+* **Vue 3 + Vite** — SPA scaffold and dev server. Entry at `frontend/src/main.js`.
+* **Vuetify 3** — UI components & layout. Global theme in `frontend/src/plugins/vuetify.js`.
+* **Pinia** — State in `frontend/src/stores/*`.
 
-### Database
+  * **Convention:** keep API calls in stores; components stay presentational.
+* **Vue Router 4** — Routes in `frontend/src/router/index.js`.
+* **Axios** — HTTP client via a small wrapper (e.g., `frontend/src/lib/http.js`) setting baseURL → backend.
+* **html2canvas + jsPDF** — PDF generation from invoice views (`frontend/src/features/invoice/pdf/*`).
 
-* **Google Sheets:** Utilized as a simple, accessible database for storing application data (Clients, Artists, Products and Services, Invoices, and Invoice Items).
+  * **Tip:** large DOMs increase memory; paginate sections if needed.
 
-## Project Structure
+**Backend**
 
-The repository is divided into two main directories:
+* **Node.js + Express** — API server (`backend/src/index.js`), routes under `backend/src/routes/*`.
+* **mysql2** — DB driver with pooled connections (`backend/src/db/*`).
+* **Stored Procedures** — Business logic in MySQL (e.g., `CreateClientTx`, `GetInvoiceByCodeTx`).
 
-* **`backend/`**: Contains the Node.js Express server that interacts with the Google Sheets API.
-* **`frontend/`**: Contains the Vue.js 3 application that provides the user interface.
+  * **Requires** DB user with `EXECUTE` privilege.
+* **dotenv** — Config via `backend/.env` (see `.env.example`).
+* **cors** — Allow frontend ↔ backend in dev.
 
-## Setup Instructions
+**Database**
 
-### Notes!
-Before starting the setup, you must install these first
-* **`Git`**: https://git-scm.com/downloads
-* **`Node.JS`**: https://nodejs.org/en (when install, don't check the additional stuff such as chocolatey!)
+* **MySQL 8** — App data (clients, staff, products, invoices).
 
-To get the Invoicez application up and running on your local machine, follow these steps:
+  * Schema & procedures are **not** in this repo; apply your own migrations first.
 
-### 1. Clone the Repository
+**Conventions**
+
+* API base URL defaults to `http://localhost:3000` (align backend `PORT` or update Axios baseURL).
+* New feature flow: create a **Pinia store** + **route** + **backend router**; keep data fetching in the store.
+* PDFs: test with real data; avoid huge images to prevent memory spikes.
+
+---
+
+## Project structure
+
+```
+invoicez/
+├─ backend/                 # Node/Express API
+│  ├─ src/                  # app code (routers, db, etc.)
+│  ├─ scripts/              # utilities, e.g. CSV loader
+│  └─ .env.example
+├─ frontend/                # Vue 3 app (Vuetify)
+│  └─ src/
+└─ README.md
+```
+
+---
+
+## Prerequisites
+
+* **Git**
+* **Node.js** ≥ 18
+* **MySQL Server** (local or remote)
+
+**Recommended for offline dev**
+
+* **MySQL Workbench** or **DBeaver** (database GUI)
+* **Postman** or **Insomnia** (API testing)
+
+---
+
+## Quick start
 
 ```bash
 git clone https://github.com/secretceremony/invoicez
 cd invoicez
 ```
 
-### 2. Google Sheets API Setup
+Then do:
 
-The backend uses a Google Service Account to access your Google Sheet.
+* [Backend & DB setup](#backend--database-setup)
+* [Frontend setup](#frontend-setup)
+* [Running locally](#running-locally)
 
-1.  **Create a Google Service Account:**
-    * Go to the [Google Cloud Console](https://console.cloud.google.com/).
-    * Create a new project or select an existing one.
-    * Navigate to "APIs & Services" > "Credentials."
-    * Click "Create Credentials" > "Service account."
-    * Follow the steps to create a new service account. Grant it the "Google Sheets API Editor" role or a custom role with equivalent permissions to read and write to Google Sheets.
-    * After creation, click on the service account email, then go to the "Keys" tab, click "Add Key" > "Create new key," and select "JSON." This will download a JSON key file.
-    * **Place this JSON file** in the `backend/` directory of your project.
+---
 
-2.  **Share your Google Sheet with the Service Account:**
-    * Create a new Google Sheet that will store your invoice data. You'll need separate tabs (sheets) named `Clients`, `Artists`, `ProductsAndServices`, `Invoices`, and `InvoiceItems`.
-    * The first row of each sheet should contain the headers as expected by the backend:
-        * **Clients**: `ID`, `Name`, `Contact`
-        * **Artists**: `ID`, `Name`, `NIM`, `Role`, `Contact`
-        * **ProductsAndServices**: `ID`, `Name`, `Description`, `UnitPrice`, `Category`
-        * **Invoices**: `ID`, `InvoiceType`, `Date`, `ClientID`, `ArtistID`, `Subtotal`, `DownPaymentAmount`, `TotalDue`, `Status`, `Notes`
-        * **InvoiceItems**: `ID`, `InvoiceID`, `Description`, `Quantity`, `UnitPrice`, `LineTotal`, `PurchaseLocation` 
-    * **Share this Google Sheet** with the email address of your newly created service account (e.g., `your-service-account-email@your-project-id.iam.gserviceaccount.com`). Grant it "Editor" access.
+## Backend & database setup
 
-3.  **Configure Environment Variables:**
-    * In the `backend/` directory, create a file named `.env`.
-    * Add the following variables to it, replacing the placeholders with your actual Spreadsheet ID and service account key file path:
+### 1) Create database & user
 
-    ```env
-    PORT=3000
-    SPREADSHEET_ID=YOUR_GOOGLE_SHEET_ID_HERE
-    SERVICE_ACCOUNT_KEY_PATH=./thermal-origin-462809-t2-3ab93a986931.json
-    ```
-    * **Note:** The `SERVICE_ACCOUNT_KEY_PATH` should be relative to the `backend/` directory.
+Connect to MySQL and run:
 
-### 3. Install Dependencies
+```sql
+CREATE DATABASE invoicez_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-Navigate to both the `backend/` and `frontend/` directories and install their respective dependencies:
+CREATE USER 'resolver'@'localhost' IDENTIFIED BY 'CHANGE_ME_STRONG_123!';
+GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON invoicez_db.* TO 'resolver'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+> **Why EXECUTE?** Stored procedures power most reads/writes.
+
+### 2) Apply schema & stored procedures
+
+> **Important:** The SQL schema (tables + stored procedures) is **not** included.
+> Create tables + procs (e.g., `CreateClientTx`, `GetInvoiceByCodeTx`) in `invoicez_db` before running the API.
+
+### 3) Install backend deps
 
 ```bash
-# For the backend
 cd backend
 npm install
+```
 
-# For the frontend
+### 4) Configure environment
+
+Create `backend/.env` from `.env.example`:
+
+```env
+# App
+PORT=3001  # or 3000 (see Frontend API note)
+
+# MySQL
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=resolver
+DB_PASSWORD=YOUR_SECURE_PASSWORD_HERE
+DB_DATABASE=invoicez_db
+```
+
+### 5) (Optional) Seed sample data from CSV
+
+From repo root:
+
+```bash
+node backend/scripts/load_from_csv.js ./backend/data
+```
+
+---
+
+## Frontend setup
+
+```bash
 cd frontend
 npm install
 ```
 
-### 4. Run the Application
+### API base URL / port
 
-#### Start the Backend Server
+* Frontend stores default to **`http://localhost:3000`**.
+* Backend `.env.example` uses **`PORT=3001`**.
+* **Fix the mismatch**:
 
-Navigate back to the `backend/` directory and start the server:
+  * Either set backend `PORT=3000`, **or**
+  * Update the frontend Axios baseURL(s) to `http://localhost:3001`.
 
-```bash
-cd backend/
-node server.js
-# You should see: Backend server running on port 3000
-# Access at http://localhost:3000
-```
+---
 
-The backend server will listen on `http://localhost:3000`.
+## Running locally
 
-#### Start the Frontend Application
+Open **two terminals**.
 
-Open a new terminal, navigate to the `frontend/` directory, and start the development server:
+### 1) Backend
 
 ```bash
-cd frontend/
-npm run dev
-# You should see output similar to:
-# VITE v6.x.x ready in Xms
-# ➜ Local: http://localhost:5173/
-```
-
-The frontend application will typically run on `http://localhost:5173`.
-
-### 5. Access the Application
-
-Open your web browser and go to `http://localhost:5173` to access the Invoice Manager.
-
-### (Optional) Access both applications at the same time
-
-you can use `.bat` file for local developing. you only need these files with this code onto your folder and you can make a shortcut to the main `.bat` file
-
-main.bat
-```bash
-@echo off
-start frontend.bat
-start backend.bat
-```
-
-frontend.bat
-```bash
-cd C:\Users\(your PC username)\invoicez\frontend
+cd backend
 npm run dev
 ```
 
-backend.bat
+expect something like this
+
 ```bash
-cd C:\Users\(your PC username)\invoicez\backend
-node server.js
+...\backend>npm run dev
+
+> invoicez-api@0.1.0 dev
+> nodemon --watch src --ext js --exec "node src/index.js"
+
+[nodemon] 3.1.10
+[nodemon] to restart at any time, enter `rs`
+[nodemon] watching path(s): src\**\*
+[nodemon] watching extensions: js
+[nodemon] starting `node src/index.js`
+Booting Invoicez API...
+API listening at http://localhost:3001
 ```
 
-## Important Notes & Troubleshooting
+### 2) Frontend
 
-* **CORS Issues:** If you encounter CORS (Cross-Origin Resource Sharing) errors, ensure your backend's `cors` middleware is correctly configured to allow requests from your frontend's origin (`http://localhost:5173`).
-* **Google Sheets API Errors:** If the application fails to fetch or save data, check the backend console for errors related to the Google Sheets API. Common issues include incorrect `SPREADSHEET_ID`, `SERVICE_ACCOUNT_KEY_PATH`, or the service account not having sufficient permissions or not being shared with the Google Sheet.
-* **Invoice Item Catalog:** The current `itemCatalog.js` in the frontend attempts to derive a master list of items from existing invoices, which can be inefficient. For a large number of invoice items, it is recommended to add a dedicated backend endpoint (e.g., `/api/all-invoice-items`) that directly reads all entries from the `InvoiceItems` sheet.
-* **Security:** The `SERVICE_ACCOUNT_KEY_PATH` in the `.env` file and the JSON key file itself should be kept strictly confidential and never committed to public repositories. ~~The `.gitignore` files are configured to prevent this.~~ for now we are still figuring out how to use the key without uploading `.json` file. the best way is by using Github Actions Workflow, OICD, and GCP Workload Identity Federation (read here: https://github.com/google-github-actions/auth)
-* **PDF Generation:** The PDF generation relies on `html2canvas` and `jspdf`. Complex CSS layouts might sometimes render imperfectly in the PDF. Adjustments to CSS or `html2canvas` options (like `scale`) might be necessary for optimal output.
+```bash
+cd frontend
+npm run dev
+```
 
-## Reporting Issues or Suggestions:
+expect something like this
 
-If you encounter any errors, bugs, or have suggestions for improvements, please feel free to contact `secretceremony` and `ShiroTenma` or submit a fork suggestion.
+```bash
+...\frontend>npm run dev    
+> invoicez@0.0.0 dev
+> vite
+
+
+VITE v6.4.1  ready in 1561 ms
+
+➜  Local:   http://localhost:5173/
+➜  Network: use --host to expose
+➜  Vue DevTools: Open http://localhost:5173/__devtools__/ as a separate window
+➜  Vue DevTools: Press Alt(⌥)+Shift(⇧)+D in App to toggle the Vue DevTools
+➜  press h + enter to show help
+```
+
+
+### 3) Use the app
+
+Visit **[http://localhost:5173](http://localhost:5173)**.
+
+---
+
+## API testing
+
+Use **Postman**/**Insomnia** (or `curl`):
+
+```bash
+# Health
+curl http://localhost:3001/health
+
+# List clients
+curl http://localhost:3001/api/clients
+
+# Create client
+curl -X POST http://localhost:3001/api/clients \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Acme Co","contact":"admin@acme.test"}'
+
+# Get invoice by code
+curl http://localhost:3001/api/invoices/INV-2025-0001
+```
+
+> If your **Products & Services** feature expects `/api/products-services`, ensure a router exists and is **mounted** at that path.
+
+---
+
+## Offline dev tools you’ll want
+
+* **DB GUI:** MySQL Workbench or DBeaver.
+* **API client:** Postman or Insomnia.
+* **Nice to have:** TablePlus, HeidiSQL, HTTPie.
+
+---
+
+## Important notes & troubleshooting
+
+* **Missing SQL schema**
+  Backend **won’t run** without tables & **stored procedures**. Create them first.
+
+* **Products & Services route**
+  Frontend store (`frontend/src/stores/productService.js`) expects `/api/products-services`.
+  Implement and mount a router in `backend/src/index.js`, e.g.:
+
+  ```js
+  const productsRouter = require('./routes/products.routes'); // example
+  app.use('/api/products-services', productsRouter);
+  ```
+
+* **Port mismatch**
+  Frontend uses `5173`, backend often `3001`.
+  Either set backend `PORT=3000` or update frontend base URLs to `3001`.
+
+* **MySQL errors**
+
+  * Ensure server is running and creds are correct.
+  * DB user must have **EXECUTE** on required procs.
+  * Procedure names/signatures must match your route calls.
+
+* **CORS**
+  If blocked requests in browser:
+
+  ```js
+  const cors = require('cors');
+  app.use(cors({ origin: 'http://localhost:5173' }));
+  ```
+
+* **Security**
+  Never commit `.env`. Rotate DB creds if exposed.
+
+---
+
+## Historical / deprecated (Google Sheets) notes
+
+> These apply to the **old** backend and are kept only for reference.
+
+* ~~**Backend datastore:** Google Sheets (via `googleapis`, `google-auth-library`)~~
+  → **Now:** MySQL 8 with stored procedures.
+
+* ~~**Service account JSON key** placed in `backend/` and referenced by `SERVICE_ACCOUNT_KEY_PATH`~~
+  → **Now:** `.env` holds MySQL credentials; no GCP key is required.
+
+* ~~**Spreadsheet tabs** `Clients`, `Artists`, `ProductsAndServices`, `Invoices`, `InvoiceItems` with fixed headers~~
+  → **Now:** relational tables in MySQL (apply your own schema/migrations).
+
+* ~~**Run backend:** `node server.js` on port `3000`~~
+  → **Now:** `npm run dev` (nodemon) with port set via `.env` (`3000` or `3001`).
+
+* ~~**UUIDs for IDs generated app-side**~~
+  → **Now:** IDs managed by DB/stored procedures (implementation dependent).
+
+* ~~**Security for GCP keys** in repo context~~
+  → **Now:** keep `.env` secrets out of VCS; DB creds only.
+
+---
+
+## Credits
+
+* **secretceremony** — Frontend owner (overall FE implementation), deployed the frontend, and previously handled the Google Sheets backend.
+* **ShiroTenma** — Backend owner (current **MySQL + Express.js**), attempted Google API Service → Google Sheets (earlier), and contributed help on the frontend.
+
+> If you build on these ideas, please **credit the author(s)** and write your **own** implementation.
+
+---
+
+## Contributing / feedback
+
+Found a bug or have an idea?
+Open an issue or contact **`secretceremony`** and **`ShiroTenma`**. For larger changes, propose via fork & PR first.
+
+---
