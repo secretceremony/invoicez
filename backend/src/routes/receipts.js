@@ -1,94 +1,69 @@
 // src/routes/receipts.js
 import { Router } from 'express';
-import { callProcRaw, callProcFirst } from '../db.js';
+import { callProcFirst } from '../db.js';
+const router = Router();
 
-const r = Router();
-
-// Create receipt (by InvoiceCode)
-r.post('/receipts', async (req, res) => {
+// LIST: kalau ada ?code= filter pakai SP ListReceiptsByCodeTx, kalau tidak ada -> list all
+router.get('/receipts', async (req, res) => {
   try {
-    let code = req.body?.code || '';
-    const amount = req.body?.amount;
-    const method = req.body?.method ?? null;
-    const notes  = req.body?.notes  ?? null;
-    if (!code || !amount) return res.status(400).json({ error: 'code dan amount wajib' });
-    try { code = decodeURIComponent(code); } catch {}
-
-    const rows = await callProcRaw('CreateReceiptByCodeSafe', [code, amount, method, notes]);
-    // SP terakhir SELECT ringkasan invoice:
-    const summary = Array.isArray(rows) ? rows.find(Array.isArray) || [] : [];
-    return res.status(201).json({ ok: true, summary });
+    const code = req.query.code ?? null;
+    if (code) {
+      const rows = await callProcFirst('ListReceiptsByCodeTx', [code]);
+      return res.json(rows);
+    }
+    // list all via stored procedure (lihat patch SQL di bawah)
+    const rows = await callProcFirst('ListAllReceiptsTx', []);
+    return res.json(rows);
   } catch (e) {
     const msg = e.message || '';
     if (msg.includes('Invoice not found')) return res.status(404).json({ error: 'Invoice not found' });
-    if (msg.includes('Amount must be greater than zero')) return res.status(400).json({ error: 'Amount must be > 0' });
-    if (msg.includes('Payment exceeds remaining balance')) return res.status(409).json({ error: 'Payment exceeds remaining balance' });
-    return res.status(500).json({ error: msg });
-  }
-});
-
-// List receipts by code
-r.get('/receipts', async (req, res) => {
-  let code = req.query.code || '';
-  if (!code) return res.status(400).json({ error: 'missing ?code=' });
-  try { code = decodeURIComponent(code); } catch {}
-  try {
-    const list = await callProcFirst('ListReceiptsByCodeTx', [code]);
-    res.json(list);
-  } catch (e) {
-    const msg = e.message || '';
-    // jika user 'resolver' belum di-grant EXECUTE yang ini, tambahkan GRANT di SQL
     res.status(500).json({ error: msg });
   }
 });
 
-// Update receipt amount / method / notes
-r.patch('/receipts/:id', async (req, res) => {
+// CREATE (baru)
+router.post('/invoices/:invoiceId/receipts', async (req, res) => {
+  const invoiceId = req.params.invoiceId;
+  const { amount, method, notes } = req.body || {};
+  if (!amount) return res.status(400).json({ error: 'amount is required' });
   try {
-    const id = req.params.id;
-    const newAmount = req.body?.amount;
-    const method = req.body?.method ?? null;
-    const notes  = req.body?.notes  ?? null;
-    if (!id || newAmount == null) {
-      return res.status(400).json({ error: 'id dan amount wajib' });
-    }
-    const after = await callProcFirst('UpdateReceiptAmountTx', [id, newAmount, method, notes]);
-    res.json({ ok: true, receipt: after?.[0] || null });
+    // kita pakai SP existing: UpdateReceiptAmountTx hanya untuk update; create gunakan CreateReceiptByCodeSafe (by code)
+    // Untuk by ID, tambahkan SP baru CreateReceiptByIdTx (lihat patch SQL) atau kirim lewat code.
+    const rows = await callProcFirst('CreateReceiptByIdTx', [
+      invoiceId, amount, method ?? null, notes ?? null
+    ]);
+    res.status(201).json(rows[0] ?? { ok: true });
   } catch (e) {
     const msg = e.message || '';
-    if (msg.includes('AmountPaid must be > 0')) return res.status(400).json({ error: 'Amount must be > 0' });
-    if (msg.includes('Payment exceeds remaining balance')) return res.status(409).json({ error: 'Payment exceeds remaining balance' });
-    if (msg.includes('Receipt not found')) return res.status(404).json({ error: 'Receipt not found' });
+    if (msg.includes('Amount')) return res.status(400).json({ error: msg });
     res.status(500).json({ error: msg });
   }
 });
 
-// Delete receipt
-r.delete('/receipts/:id', async (req, res) => {
+// UPDATE nominal
+router.patch('/receipts/:id', async (req, res) => {
+  const { amount, method, notes } = req.body || {};
+  if (amount == null) return res.status(400).json({ error: 'amount is required' });
   try {
-    const id = req.params.id;
-    const out = await callProcFirst('DeleteReceiptTx', [id]);
-    res.json(out?.[0] || { ok: true });
+    const rows = await callProcFirst('UpdateReceiptAmountTx', [req.params.id, amount, method ?? null, notes ?? null]);
+    res.json(rows[0] ?? { ok: true });
   } catch (e) {
     const msg = e.message || '';
     if (msg.includes('Receipt not found')) return res.status(404).json({ error: 'Receipt not found' });
-    res.status(500).json({ error: msg });
+    res.status(400).json({ error: msg });
   }
 });
 
-r.get('/receipts', async (req, res) => {
-  let { code, from, to } = req.query;
+// DELETE
+router.delete('/receipts/:id', async (req, res) => {
   try {
-    if (code) {
-      try { code = decodeURIComponent(code); } catch {}
-    } else {
-      code = null;
-    }
-    const sets = await callProcSets('SearchReceiptsTx', [code, from ?? null, to ?? null]);
-    res.json(sets[0] ?? []);
+    const rows = await callProcFirst('DeleteReceiptTx', [req.params.id]);
+    res.json(rows[0] ?? { ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const msg = e.message || '';
+    if (msg.includes('Receipt not found')) return res.status(404).json({ error: 'Receipt not found' });
+    res.status(400).json({ error: msg });
   }
 });
 
-export default r;
+export default router;
