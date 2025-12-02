@@ -1,6 +1,6 @@
 // src/routes/products.routes.js
 import { Router } from 'express';
-import { callProcFirst } from '../db.js'; // atau callProcSets sesuai util kamu
+import { callProcFirst, pool } from '../db.js'; // atau callProcSets sesuai util kamu
 
 const r = Router();
 
@@ -37,7 +37,16 @@ r.post('/', async (req, res) => {
 // GET by ID
 r.get('/:id', async (req, res) => {
   try {
-    const rows = await callProcFirst('GetProductByIdTx', [req.params.id]);
+    let rows;
+    try {
+      rows = await callProcFirst('GetProductByIdTx', [req.params.id]);
+    } catch (e) {
+      // fallback SELECT jika SP gagal/tidak ada
+      [rows] = await pool.query(
+        'SELECT ProductID, Name, Description, UnitPrice, Category, Type FROM Products WHERE ProductID = ? LIMIT 1',
+        [req.params.id]
+      );
+    }
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
     res.json(normalizeProduct(rows[0]));
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -47,8 +56,24 @@ r.get('/:id', async (req, res) => {
 r.get('/', async (req, res) => {
   try {
     const { q = null, category = null, type = null } = req.query;
-    const rows = (await callProcFirst('SearchProductsTx', [q, category, type])) ?? [];
-    res.json(rows.map(normalizeProduct));
+    let rows;
+    try {
+      rows = await callProcFirst('SearchProductsTx', [q, category, type]);
+    } catch (e) {
+      // fallback SELECT jika SP gagal/tidak ada
+      const like = q ? `%${q}%` : null;
+      const cat = category || null;
+      const typ = type || null;
+      [rows] = await pool.query(
+        `SELECT ProductID, Name, Description, UnitPrice, Category, Type
+           FROM Products
+          WHERE (? IS NULL OR Name LIKE ?)
+            AND (? IS NULL OR Category = ?)
+            AND (? IS NULL OR Type = ?)`,
+        [like, like, cat, cat, typ, typ]
+      );
+    }
+    res.json((rows ?? []).map(normalizeProduct));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

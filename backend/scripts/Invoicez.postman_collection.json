@@ -1,0 +1,401 @@
+{
+  "info": {
+    "_postman_id": "1e030395-e687-4380-8d82-db33a2e2b132",
+    "name": "Invoicez API (Local, MySQL)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "invoiceCodeRaw", "value": "FOLKS/COMM/2025/09/001" },
+    { "key": "invoiceCodeEnc", "value": "FOLKS%2FCOMM%2F2025%2F09%2F001" },
+    { "key": "invoiceId", "value": "FOLKS/COMM/2025/09/001" },
+    { "key": "receiptId", "value": "<fill-after-create>" },
+    { "key": "handoverId", "value": "<fill-after-create>" },
+    { "key": "clientId", "value": "<fill-after-create>" },
+    { "key": "staffId", "value": "<fill-after-create>" },
+    { "key": "productId", "value": "<fill-after-create>" },
+    { "key": "q", "value": "" },
+    { "key": "limit", "value": "50" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/auth/register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"User\" \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invoices",
+      "item": [
+        {
+          "name": "GET /api/invoices (list)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices?limit={{limit}}&q={{q}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoices"],
+              "query": [
+                { "key": "limit", "value": "{{limit}}" },
+                { "key": "q", "value": "{{q}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/invoice?code={{invoiceCodeRaw}}",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/invoice?code={{invoiceCodeRaw}}" }
+        },
+        {
+          "name": "GET /api/invoices/{{invoiceCodeEnc}} (by-code detail)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/invoices/{{invoiceCodeEnc}}" }
+        },
+        {
+          "name": "GET /api/invoices/{{invoiceId}} (REST detail)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/invoices/{{invoiceId}}" }
+        },
+        {
+          "name": "POST /api/invoices (create with items)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/invoices",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceType\": \"Art Commission\",\n  \"invoiceDate\": \"2025-02-01\",\n  \"clientId\": \"{{clientId}}\",\n  \"staffId\": \"{{staffId}}\",\n  \"downPaymentAmount\": 25000,\n  \"status\": \"Draft\",\n  \"notes\": \"termin 1\",\n  \"items\": [\n    { \"Description\": \"Line item 1\", \"Quantity\": 1, \"UnitPrice\": 50000 }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/invoices/empty",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/invoices/empty",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceType\": \"Staff Check\",\n  \"invoiceDate\": \"2025-02-01\",\n  \"staffId\": \"{{staffId}}\",\n  \"status\": \"Draft\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/invoices/by-code/{{invoiceCodeEnc}}",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/invoices/by-code/{{invoiceCodeEnc}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceDate\": \"2025-02-02\",\n  \"notes\": \"updated notes\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT /api/invoices/{{invoiceId}}",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/invoices/{{invoiceId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceDate\": \"2025-02-03\",\n  \"status\": \"Sent\",\n  \"notes\": \"sent update\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/invoices/by-code/{{invoiceCodeEnc}}",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/invoices/by-code/{{invoiceCodeEnc}}" }
+        },
+        {
+          "name": "DELETE /api/invoices/{{invoiceId}}",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/invoices/{{invoiceId}}" }
+        },
+        {
+          "name": "POST /api/invoices/{{invoiceId}}/items (add item)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/invoices/{{invoiceId}}/items",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Extra item\",\n  \"quantity\": 1,\n  \"unitPrice\": 15000,\n  \"purchaseLocation\": \"@store\",\n  \"productId\": \"{{productId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/invoices/by-code/{{invoiceCodeEnc}}/items",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/invoices/by-code/{{invoiceCodeEnc}}/items" }
+        },
+        {
+          "name": "GET /api/invoices/by-code/{{invoiceCodeEnc}}/receipts",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/invoices/by-code/{{invoiceCodeEnc}}/receipts" }
+        },
+        {
+          "name": "GET /api/invoices/by-code/{{invoiceCodeEnc}}/handovers",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/invoices/by-code/{{invoiceCodeEnc}}/handovers" }
+        }
+      ]
+    },
+    {
+      "name": "Receipts",
+      "item": [
+        {
+          "name": "GET /api/receipts (all)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/receipts" }
+        },
+        {
+          "name": "GET /api/receipts?code={{invoiceCodeEnc}}",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/receipts?code={{invoiceCodeEnc}}" }
+        },
+        {
+          "name": "POST /api/invoices/{{invoiceId}}/receipts",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/invoices/{{invoiceId}}/receipts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50000,\n  \"method\": \"Transfer\",\n  \"notes\": \"termin 1\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/receipts/{{receiptId}}",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/receipts/{{receiptId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 25000,\n  \"method\": \"Cash\",\n  \"notes\": \"ubah nominal\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/receipts/{{receiptId}}",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/receipts/{{receiptId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Handovers",
+      "item": [
+        {
+          "name": "GET /api/handovers/by-code/{{invoiceCodeEnc}}",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/handovers/by-code/{{invoiceCodeEnc}}" }
+        },
+        {
+          "name": "POST /api/handovers",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/handovers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceCode\": \"{{invoiceCodeRaw}}\",\n  \"staffNIM\": \"110122009\",\n  \"description\": \"Serah terima\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/handovers/{{handoverId}}",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/handovers/{{handoverId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"letterDate\": \"2025-02-10\",\n  \"staffNIM\": \"110122009\",\n  \"description\": \"Update deskripsi\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/handovers/{{handoverId}}",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/handovers/{{handoverId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "GET /api/clients",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clients" }
+        },
+        {
+          "name": "GET /api/clients?search={{q}}",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clients?search={{q}}" }
+        },
+        {
+          "name": "POST /api/clients",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/clients",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"PT Contoh Makmur\",\n  \"contact\": \"marketing@contoh.id\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/clients/{{clientId}}",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clients/{{clientId}}" }
+        },
+        {
+          "name": "PATCH /api/clients/{{clientId}}",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/clients/{{clientId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"PT Contoh Makmur Tbk\",\n  \"contact\": \"cs@contoh.id\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/clients/{{clientId}}",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/clients/{{clientId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Staff",
+      "item": [
+        {
+          "name": "GET /api/staff",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/staff" }
+        },
+        {
+          "name": "GET /api/staff?search={{q}}",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/staff?search={{q}}" }
+        },
+        {
+          "name": "POST /api/staff",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/staff",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sakura\",\n  \"nim\": \"110122009\",\n  \"role\": \"Ilustrator Junior\",\n  \"type\": \"Illustrator\",\n  \"contact\": \"wa.me/62xxx\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/staff/{{staffId}}",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/staff/{{staffId}}" }
+        },
+        {
+          "name": "PATCH /api/staff/{{staffId}}",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/staff/{{staffId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"Ilustrator Senior\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/staff/{{staffId}}",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/staff/{{staffId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "GET /api/products",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/products" }
+        },
+        {
+          "name": "GET /api/products?q={{q}}&category=&type=",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/products?q={{q}}" }
+        },
+        {
+          "name": "POST /api/products",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Poster A3\",\n  \"description\": \"Cetak full color\",\n  \"unitPrice\": 50000,\n  \"category\": \"Merch\",\n  \"type\": \"Print\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/products/{{productId}}",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/products/{{productId}}" }
+        },
+        {
+          "name": "PATCH /api/products/{{productId}}",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/products/{{productId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitPrice\": 60000,\n  \"description\": \"Update harga\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PUT /api/products/{{productId}}",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/products/{{productId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Poster A3\",\n  \"description\": \"Update full\",\n  \"unitPrice\": 60000,\n  \"category\": \"Merch\",\n  \"type\": \"Print\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/products/{{productId}}",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/products/{{productId}}" }
+        },
+        {
+          "name": "GET /api/products-services (alias)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/products-services" }
+        }
+      ]
+    }
+  ]
+}
