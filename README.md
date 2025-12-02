@@ -119,6 +119,14 @@ curl -X POST http://localhost:3001/api/auth/register -H "Content-Type: applicati
 - DB permission errors: run GRANT EXECUTE as admin; procs should be `SQL SECURITY DEFINER`.
 - Loader FK errors: ensure referenced Client/Staff exist or adjust CSV/loader to resolve IDs.
 
+## Historical / deprecated (Google Sheets) notes
+- Old datastore: Google Sheets (via googleapis/google-auth-library).
+- Service account JSON used to live in backend and referenced by `SERVICE_ACCOUNT_KEY_PATH`.
+- Sheets tabs: Clients, Artists, ProductsAndServices, Invoices, InvoiceItems with fixed headers.
+- Old run: `node server.js` on port 3000 with direct Sheet reads/writes.
+- Replaced by: MySQL 8 + stored procedures + Express (`backend/src`).
+- Security: keep `.env` secrets out of VCS; DB creds only (no GCP keys).
+
 ## Credits
 - **secretceremony** — Frontend owner, earlier Google Sheets backend.
 - **ShiroTenma** — Backend owner (MySQL + Express.js), frontend contributions.
