@@ -1,6 +1,6 @@
 // src/routes/invoices.js
 import { Router } from 'express';
-import { callProcRaw, callProcSets, callProcFirst, pickInvoiceSets, pool } from '../db.js';
+import { callProcRaw, callProcSets, callProcFirst, pickInvoiceSets } from '../db.js';
 
 const r = Router();
 
@@ -70,26 +70,14 @@ r.get('/invoices', async (req, res) => {
   const q = req.query.q || null;
 
   try {
-    // 1) pakai SP kalau ada
-    try {
-      const sets = await callProcSets('SearchInvoicesTx', [q, status, null, null]);
-      const rows = sets[0] ?? [];
-      return res.json(rows.map(normalizeInvoiceHeader));
-    } catch (_) {}
-
-    // 2) fallback SELECT (butuh SELECT privilege)
-    const [rows] = await pool.query(
-      `SELECT InvoiceCode, InvoiceType, InvoiceDate, Status, Subtotal, AmountPaid, TotalDue
-         FROM Invoices
-        WHERE (? IS NULL OR Status = ?)
-          AND (? IS NULL OR InvoiceCode LIKE CONCAT('%', ?, '%'))
-        ORDER BY InvoiceDate DESC, CreatedAt DESC
-        LIMIT ? OFFSET ?`,
-      [status, status, q, q, limit, offset]
-    );
-    res.json(rows.map(normalizeInvoiceHeader));
+    const sets = await callProcSets('SearchInvoicesTx', [q, status, limit, offset]);
+    const rows = sets[0] ?? [];
+    return res.json(rows.map(normalizeInvoiceHeader));
   } catch (e) {
-    res.status(500).json({ error: e.message, hint: 'Buat SP SearchInvoicesTx/ListInvoicesTx lalu GRANT EXECUTE' });
+    res.status(500).json({
+      error: e.message,
+      hint: 'Pastikan SP SearchInvoicesTx ada dan user punya EXECUTE; semua akses harus via SP (tanpa SELECT langsung).'
+    });
   }
 });
 

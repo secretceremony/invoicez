@@ -43,7 +43,8 @@ async function loadProducts(file) {
       r.Name || '',
       r.Description || null,
       r.UnitPrice ? Number(r.UnitPrice) : 0,
-      r.Category || null
+      r.Category || null,
+      r.Type || null
     ]);
   }
   console.log('Products:', rows.length);

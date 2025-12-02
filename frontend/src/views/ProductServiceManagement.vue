@@ -16,6 +16,8 @@ const productFormData = ref({
 
 const isEditing = ref(false);
 const productDialog = ref(false);
+const searchTerm = ref('');
+const sortBy = ref('name-asc');
 
 const categories = ['Commission Base', 'Commission Add-on', 'Merch Item', 'Service Fee', 'Other']; // Define your categories
 
@@ -93,7 +95,33 @@ function resetForm() {
   productFormData.value = { ID: '', Name: '', Description: '', UnitPrice: 0, Category: '' };
 }
 
-const itemsForTable = computed(() => productServiceStore.productsServices);
+const itemsForTable = computed(() => {
+  const term = searchTerm.value.trim().toLowerCase();
+  const filtered = (productServiceStore.productsServices || []).filter(item => {
+    if (!term) return true;
+    return [item.Name, item.Category, item.Description]
+      .filter(Boolean)
+      .some(v => v.toString().toLowerCase().includes(term));
+  });
+
+  const sorted = [...filtered];
+  sorted.sort((a, b) => {
+    const aName = (a.Name || '').toLowerCase();
+    const bName = (b.Name || '').toLowerCase();
+    const aPrice = Number(a.UnitPrice || 0);
+    const bPrice = Number(b.UnitPrice || 0);
+    switch (sortBy.value) {
+      case 'name-desc': return bName.localeCompare(aName);
+      case 'price-asc': return aPrice - bPrice;
+      case 'price-desc': return bPrice - aPrice;
+      case 'category-asc': return (a.Category || '').localeCompare(b.Category || '');
+      case 'category-desc': return (b.Category || '').localeCompare(a.Category || '');
+      default: return aName.localeCompare(bName); // name-asc
+    }
+  });
+
+  return sorted;
+});
 </script>
 
 <template>
@@ -102,6 +130,31 @@ const itemsForTable = computed(() => productServiceStore.productsServices);
       <v-card-title>
         Products & Services Management
         <v-spacer></v-spacer>
+        <v-text-field
+          v-model="searchTerm"
+          label="Search"
+          density="comfortable"
+          prepend-inner-icon="mdi-magnify"
+          hide-details
+          class="mr-4"
+          style="max-width: 260px"
+        />
+        <v-select
+          v-model="sortBy"
+          :items="[
+            { title: 'Name (A-Z)', value: 'name-asc' },
+            { title: 'Name (Z-A)', value: 'name-desc' },
+            { title: 'Price (Low-High)', value: 'price-asc' },
+            { title: 'Price (High-Low)', value: 'price-desc' },
+            { title: 'Category (A-Z)', value: 'category-asc' },
+            { title: 'Category (Z-A)', value: 'category-desc' },
+          ]"
+          label="Sort"
+          density="comfortable"
+          hide-details
+          class="mr-4"
+          style="max-width: 200px"
+        />
         <v-btn color="primary" @click="openAddDialog">Add New Product/Service</v-btn>
       </v-card-title>
       <v-card-text>

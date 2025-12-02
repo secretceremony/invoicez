@@ -7,6 +7,9 @@ import { formatRupiah } from '@/utils/formatCurrency';
 const router = useRouter();
 const invoiceStore = useInvoiceStore();
 
+const searchTerm = ref('');
+const sortBy = ref('date-desc');
+
 onMounted(() => {
   invoiceStore.fetchInvoices();
 });
@@ -24,7 +27,38 @@ const headers = ref([
   { title: 'Actions', key: 'actions', sortable: false },
 ]);
 
-const invoices = computed(() => invoiceStore.invoices);
+const invoices = computed(() => {
+  const term = searchTerm.value.trim().toLowerCase();
+  const filtered = (invoiceStore.invoices || []).filter((inv) => {
+    if (!term) return true;
+    return [
+      inv.ID,
+      inv.InvoiceType,
+      inv.Status,
+      inv.ClientID,
+      inv.StaffID,
+    ]
+      .filter(Boolean)
+      .some((v) => v.toString().toLowerCase().includes(term));
+  });
+
+  const sorted = [...filtered];
+  sorted.sort((a, b) => {
+    const dateA = new Date(a.Date || a.InvoiceDate || 0).getTime();
+    const dateB = new Date(b.Date || b.InvoiceDate || 0).getTime();
+    const totalA = Number(a.TotalDue || 0);
+    const totalB = Number(b.TotalDue || 0);
+    switch (sortBy.value) {
+      case 'date-asc': return dateA - dateB;
+      case 'total-asc': return totalA - totalB;
+      case 'total-desc': return totalB - totalA;
+      case 'id-asc': return (a.ID || '').localeCompare(b.ID || '');
+      case 'id-desc': return (b.ID || '').localeCompare(a.ID || '');
+      default: return dateB - dateA; // date-desc
+    }
+  });
+  return sorted;
+});
 
 function viewInvoice(id) {
   router.push({ name: 'invoice-details', params: { id } });
@@ -53,6 +87,31 @@ async function deleteInvoice(id) {
       <v-card-title>
         All Invoices
         <v-spacer></v-spacer>
+        <v-text-field
+          v-model="searchTerm"
+          label="Search"
+          density="comfortable"
+          prepend-inner-icon="mdi-magnify"
+          hide-details
+          class="mr-4"
+          style="max-width: 260px"
+        />
+        <v-select
+          v-model="sortBy"
+          :items="[
+            { title: 'Date (Newest)', value: 'date-desc' },
+            { title: 'Date (Oldest)', value: 'date-asc' },
+            { title: 'Total Due (High-Low)', value: 'total-desc' },
+            { title: 'Total Due (Low-High)', value: 'total-asc' },
+            { title: 'ID (A-Z)', value: 'id-asc' },
+            { title: 'ID (Z-A)', value: 'id-desc' },
+          ]"
+          label="Sort"
+          density="comfortable"
+          hide-details
+          class="mr-4"
+          style="max-width: 200px"
+        />
         <v-btn color="primary" :to="{ name: 'create-invoice' }">
           <v-icon left>mdi-file-document-plus</v-icon>
           Create New Invoice

@@ -4,6 +4,8 @@ import { useClientStore } from '@/stores/client';
 import { VDataTable } from 'vuetify/components';
 
 const clientStore = useClientStore();
+const searchTerm = ref('');
+const sortBy = ref('name-asc');
 
 const clientFormData = ref({
   ID: '',
@@ -65,7 +67,23 @@ function resetForm() {
   clientFormData.value = { ID: '', Name: '', Contact: '' };
 }
 
-const itemsForTable = computed(() => clientStore.clients);
+const itemsForTable = computed(() => {
+  const term = searchTerm.value.trim().toLowerCase();
+  const filtered = (clientStore.clients || []).filter(c => {
+    if (!term) return true;
+    return [c.Name, c.Contact].filter(Boolean).some(v => v.toLowerCase().includes(term));
+  });
+  const sorted = [...filtered];
+  sorted.sort((a, b) => {
+    switch (sortBy.value) {
+      case 'contact-asc': return (a.Contact || '').localeCompare(b.Contact || '');
+      case 'contact-desc': return (b.Contact || '').localeCompare(a.Contact || '');
+      case 'name-desc': return (b.Name || '').localeCompare(a.Name || '');
+      default: return (a.Name || '').localeCompare(b.Name || ''); // name-asc
+    }
+  });
+  return sorted;
+});
 </script>
 
 <template>
@@ -74,6 +92,29 @@ const itemsForTable = computed(() => clientStore.clients);
       <v-card-title>
         Client Management
         <v-spacer></v-spacer>
+        <v-text-field
+          v-model="searchTerm"
+          label="Search"
+          density="comfortable"
+          prepend-inner-icon="mdi-magnify"
+          hide-details
+          class="mr-4"
+          style="max-width: 240px"
+        />
+        <v-select
+          v-model="sortBy"
+          :items="[
+            { title: 'Name (A-Z)', value: 'name-asc' },
+            { title: 'Name (Z-A)', value: 'name-desc' },
+            { title: 'Contact (A-Z)', value: 'contact-asc' },
+            { title: 'Contact (Z-A)', value: 'contact-desc' },
+          ]"
+          label="Sort"
+          density="comfortable"
+          hide-details
+          class="mr-4"
+          style="max-width: 200px"
+        />
         <v-btn color="primary" @click="openAddDialog">Add New Client</v-btn>
       </v-card-title>
       <v-card-text>

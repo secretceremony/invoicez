@@ -4,6 +4,8 @@ import { useStaffStore } from '@/stores/staff';
 import { VDataTable } from 'vuetify/components';
 
 const staffStore = useStaffStore();
+const searchTerm = ref('');
+const sortBy = ref('name-asc');
 
 const staffFormData = ref({
   ID: '',
@@ -72,7 +74,27 @@ function resetForm() {
   staffFormData.value = { ID: '', Name: '', NIM: '', Role: '', Contact: '' };
 }
 
-const itemsForTable = computed(() => staffStore.staff);
+const itemsForTable = computed(() => {
+  const term = searchTerm.value.trim().toLowerCase();
+  const filtered = (staffStore.staff || []).filter(s => {
+    if (!term) return true;
+    return [s.Name, s.NIM, s.Role, s.Contact]
+      .filter(Boolean)
+      .some(v => v.toString().toLowerCase().includes(term));
+  });
+  const sorted = [...filtered];
+  sorted.sort((a, b) => {
+    switch (sortBy.value) {
+      case 'nim-asc': return (a.NIM || '').localeCompare(b.NIM || '');
+      case 'nim-desc': return (b.NIM || '').localeCompare(a.NIM || '');
+      case 'role-asc': return (a.Role || '').localeCompare(b.Role || '');
+      case 'role-desc': return (b.Role || '').localeCompare(a.Role || '');
+      case 'name-desc': return (b.Name || '').localeCompare(a.Name || '');
+      default: return (a.Name || '').localeCompare(b.Name || ''); // name-asc
+    }
+  });
+  return sorted;
+});
 </script>
 
 <template>
@@ -81,6 +103,31 @@ const itemsForTable = computed(() => staffStore.staff);
       <v-card-title>
         Staff Management
         <v-spacer></v-spacer>
+        <v-text-field
+          v-model="searchTerm"
+          label="Search"
+          density="comfortable"
+          prepend-inner-icon="mdi-magnify"
+          hide-details
+          class="mr-4"
+          style="max-width: 240px"
+        />
+        <v-select
+          v-model="sortBy"
+          :items="[
+            { title: 'Name (A-Z)', value: 'name-asc' },
+            { title: 'Name (Z-A)', value: 'name-desc' },
+            { title: 'NIM (A-Z)', value: 'nim-asc' },
+            { title: 'NIM (Z-A)', value: 'nim-desc' },
+            { title: 'Role (A-Z)', value: 'role-asc' },
+            { title: 'Role (Z-A)', value: 'role-desc' },
+          ]"
+          label="Sort"
+          density="comfortable"
+          hide-details
+          class="mr-4"
+          style="max-width: 200px"
+        />
         <v-btn color="primary" @click="openAddDialog">Add New Staff Member</v-btn>
       </v-card-title>
       <v-card-text>
