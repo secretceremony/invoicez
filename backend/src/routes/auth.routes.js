@@ -102,4 +102,22 @@ r.post('/login', async (req, res) => {
   }
 });
 
+// Logout (stateless JWT) — client just discards token
+r.post('/logout', (_req, res) => {
+  res.json({ ok: true, message: 'Logged out (discard token on client)' });
+});
+
+// Delete user by email
+r.delete('/user', async (req, res) => {
+  try {
+    const email = (req.body?.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'email wajib' });
+    const rows = await callProcFirst('DeleteUserByEmailTx', [email]);
+    res.json(rows?.[0] ?? { ok: true });
+  } catch (e) {
+    const msg = e?.message || '';
+    res.status(500).json({ error: msg });
+  }
+});
+
 export default r;
