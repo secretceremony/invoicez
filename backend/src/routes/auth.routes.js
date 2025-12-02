@@ -1,7 +1,7 @@
 // src/routes/auth.routes.js
 import { Router } from 'express';
 import crypto from 'crypto';
-import { pool } from '../db.js';
+import { callProcFirst } from '../db.js';
 
 const r = Router();
 
@@ -51,29 +51,25 @@ r.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'email dan password wajib' });
     }
 
-    const [exists] = await pool.query(
-      'SELECT UserID FROM Users WHERE Email = ? LIMIT 1',
-      [email],
-    );
-    if (exists.length) {
-      return res.status(409).json({ error: 'Email sudah terdaftar' });
-    }
-
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = hashPassword(password, salt);
 
-    const [result] = await pool.query(
-      'INSERT INTO Users (Email, FullName, PasswordHash, PasswordSalt) VALUES (?,?,?,?)',
-      [email, name, hash, salt],
-    );
-
-    const user = { id: result.insertId, email, name };
+    // SP CreateUserTx should enforce unique email and return inserted row
+    // Expected signature: (p_Email, p_FullName, p_PasswordHash, p_PasswordSalt)
+    const rows = await callProcFirst('CreateUserTx', [email, name, hash, salt]);
+    const created = rows?.[0];
+    const user = created
+      ? { id: created.UserID ?? created.ID ?? created.id, email: created.Email ?? email, name: created.FullName ?? name }
+      : { id: null, email, name };
     const token = signToken({ sub: user.id, email, name });
     res.status(201).json({ user, token, expiresIn: TOKEN_TTL });
   } catch (e) {
     const msg = e?.message || '';
     if (msg.includes('ER_NO_SUCH_TABLE')) {
       return res.status(500).json({ error: 'Table Users belum ada. Buat tabel Users terlebih dahulu.' });
+    }
+    if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('exists')) {
+      return res.status(409).json({ error: 'Email sudah terdaftar' });
     }
     res.status(500).json({ error: msg });
   }
@@ -87,11 +83,9 @@ r.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'email dan password wajib' });
     }
 
-    const [rows] = await pool.query(
-      'SELECT UserID, Email, FullName, PasswordHash, PasswordSalt FROM Users WHERE Email = ? LIMIT 1',
-      [email],
-    );
-    const row = rows[0];
+    // SP GetUserByEmailTx should return PasswordHash, PasswordSalt for given email
+    const rows = await callProcFirst('GetUserByEmailTx', [email]);
+    const row = rows?.[0];
     if (!row) return res.status(401).json({ error: 'Email atau password salah' });
 
     const computed = hashPassword(password, row.PasswordSalt);
