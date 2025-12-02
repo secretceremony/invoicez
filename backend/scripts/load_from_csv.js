@@ -117,7 +117,7 @@ async function loadInvoicesWithItems(file) {
     await loadClients(path.join(base, 'clients.csv'));
     await loadStaff(path.join(base, 'staff.csv'));
     await loadProducts(path.join(base, 'products.csv'));
-    await loadInvoicesWithItems(path.join(base, 'invoices_items.csv'));
+    await loadInvoicesWithItems(path.join(base, 'invoice_items.csv')); // correct filename
   } finally {
     await pool.end();
   }

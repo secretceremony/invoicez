@@ -46,8 +46,12 @@ r.patch('/:id', async (req, res) => {
     const sets = await callProcSets('UpdateHandoverTx', [
       req.params.id, letterDate, staffNIM, description
     ]);
-    const rows = await callProcFirst('ListHandoverByCodeTx', ['%']); // tidak ada SP get-by-id, jadi biarkan SP mengembalikan last update via UpdateHandoverTx
-    res.json(sets[0]?.[0] ?? { ok: true });
+    let updated = sets[0]?.[0] ?? null;
+    try {
+      const fresh = await callProcFirst('GetHandoverByIdTx', [req.params.id]);
+      if (fresh?.[0]) updated = fresh[0];
+    } catch (_) {}
+    res.json(updated ?? { ok: true });
   } catch (e) {
     const msg = e.message || '';
     if (msg.includes('Staff not found'))        return res.status(404).json({ error: msg });

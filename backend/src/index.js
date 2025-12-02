@@ -8,6 +8,7 @@ dotenv.config();
 
 // Routers (IMPORT SEKALI SAJA)
 import invoicesRouter  from './routes/invoices.js';
+import authRouter      from './routes/auth.routes.js';
 import receiptsRouter  from './routes/receipts.js';
 import clientsRouter   from './routes/clients.routes.js';
 import staffRouter     from './routes/staff.routes.js';
@@ -22,11 +23,13 @@ app.use(express.json());
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 // Mount routers (PASTIKAN TIDAK DUPLIKAT)
+app.use('/api/auth',    authRouter);         // register/login
 app.use('/api',          invoicesRouter);     // invoices: /api/...
 app.use('/api',          receiptsRouter);     // receipts: /api/...
 app.use('/api/clients',  clientsRouter);      // clients:  /api/clients/...
 app.use('/api/staff',    staffRouter);        // staff:    /api/staff/...
 app.use('/api/products', productsRouter);     // products: /api/products/...
+app.use('/api/products-services', productsRouter); // FE expects this alias
 app.use('/api/handovers', handoversRouter);   // handovers:/api/handovers/...
 
 // Fallback 404 untuk /api

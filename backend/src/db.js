@@ -38,6 +38,11 @@ export async function callProcSets(proc, params = []) {
   return rows.filter(Array.isArray);
 }
 
+// returns FIRST resultset (array) via a simpler name (used by scripts)
+export async function callProc(proc, params = []) {
+  return callProcFirst(proc, params);
+}
+
 // helper to map GET INVOICE multi-sets into named fields
 export function pickInvoiceSets(rowsOrSets) {
   const sets = Array.isArray(rowsOrSets) && Array.isArray(rowsOrSets[0])
